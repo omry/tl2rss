@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<tomcatProjectProperties>
+    <rootDir>/</rootDir>
+    <exportSource>false</exportSource>
+    <reloadable>true</reloadable>
+    <redirectLogger>true</redirectLogger>
+    <updateXml>true</updateXml>
+    <warLocation></warLocation>
+    <extraInfo></extraInfo>
+    <webPath>/tl2rss</webPath>
+    <webClassPathEntries>
+        <webClassPathEntry>/TorrentLeech2RSS/WEB-INF/classes</webClassPathEntry>
+        <webClassPathEntry>/TorrentLeech2RSS/WEB-INF/lib/htmlparser.jar</webClassPathEntry>
+        <webClassPathEntry>/TorrentLeech2RSS/work</webClassPathEntry>
+    </webClassPathEntries>
+</tomcatProjectProperties>
