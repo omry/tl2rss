@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLConnection;
@@ -19,6 +20,7 @@ import java.util.regex.Pattern;
 
 import org.htmlparser.Parser;
 import org.htmlparser.lexer.Lexer;
+import org.htmlparser.lexer.Page;
 import org.htmlparser.util.ParserException;
 
 public class TorrentLeech
@@ -43,9 +45,9 @@ public class TorrentLeech
 		m_password = password;
 	}
 	
-	private void test() throws FileNotFoundException, ParserException
+	private void test() throws FileNotFoundException, ParserException, UnsupportedEncodingException
 	{
-		Parser parser = new Parser("file:///home/omry/1.html");
+		Parser parser = new Parser(new Lexer(new Page(new FileInputStream("test.html"), "UTF-8")));
 		TlVisitor tlv = new TlVisitor();
 		parser.visitAllNodesWith(tlv);
 	}
