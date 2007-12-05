@@ -30,7 +30,6 @@ import org.htmlparser.filters.NotFilter;
 import org.htmlparser.filters.TagNameFilter;
 import org.htmlparser.lexer.Lexer;
 import org.htmlparser.lexer.Page;
-import org.htmlparser.util.NodeIterator;
 import org.htmlparser.util.NodeList;
 import org.htmlparser.util.ParserException;
 
@@ -60,9 +59,15 @@ public class TorrentLeech
 	{
 		Parser parser = new Parser(new Lexer(new Page(new FileInputStream("test.html"), "UTF-8")), Parser.DEVNULL);
 		NodeList res = parser.extractAllNodesThatMatch(getDownloadsFilter());
-		for (int i = 0; i < res.size(); i++)
+		for (int i = 0; i < 2; i++)
 		{
-			System.err.println(res.elementAt(i).toHtml());
+			Node node = res.elementAt(i);
+			NodeList children = node.getChildren();
+			for (int j = 0; j < children.size(); j++)
+			{
+				System.err.println(j + " :" + children.elementAt(j).toHtml());
+			}
+			System.err.println("-----------");
 		}
 	}
 
@@ -71,6 +76,12 @@ public class TorrentLeech
 		URL url = new URL("http://www.torrentleech.org/browse.php?cat="+cat);
 		URLConnection conn = (HttpURLConnection) url.openConnection();
 		conn.setRequestProperty("Cookie", getCookiesString());
+		InputStream in = conn.getInputStream();
+		int c;
+		while((c = in.read()) != -1)
+		{
+			System.out.print((char)c);
+		}
 	}
 
 	public void login() throws IOException
@@ -78,7 +89,6 @@ public class TorrentLeech
 		String uip = getUIP();
 		URL url = new URL("http://www.torrentleech.org/takelogin.php");
 		HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-		conn.setInstanceFollowRedirects(false);
 		conn.setDoOutput(true);
 		conn.setRequestProperty("User-Agent", "Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.8) Gecko/20071004 Iceweasel/2.0.0.8 (Debian-2.0.0.8-1)");
 		conn.setRequestProperty("Referer","http://www.torrentleech.org/login.php");
@@ -87,6 +97,7 @@ public class TorrentLeech
 		conn.setRequestProperty("Content-Length", ""+data.length);
 		OutputStream out = conn.getOutputStream();
 		out.write(data);
+		conn.setInstanceFollowRedirects(false);
 		conn.connect();
 		List cookies = (List) conn.getHeaderFields().get("Set-Cookie");
 		handleCookies(cookies);
