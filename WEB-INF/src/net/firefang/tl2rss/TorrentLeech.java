@@ -18,9 +18,20 @@ import java.util.StringTokenizer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.htmlparser.Node;
+import org.htmlparser.NodeFilter;
 import org.htmlparser.Parser;
+import org.htmlparser.filters.AndFilter;
+import org.htmlparser.filters.HasAttributeFilter;
+import org.htmlparser.filters.HasChildFilter;
+import org.htmlparser.filters.HasSiblingFilter;
+import org.htmlparser.filters.NodeClassFilter;
+import org.htmlparser.filters.NotFilter;
+import org.htmlparser.filters.TagNameFilter;
 import org.htmlparser.lexer.Lexer;
 import org.htmlparser.lexer.Page;
+import org.htmlparser.util.NodeIterator;
+import org.htmlparser.util.NodeList;
 import org.htmlparser.util.ParserException;
 
 public class TorrentLeech
@@ -47,19 +58,19 @@ public class TorrentLeech
 	
 	private void test() throws FileNotFoundException, ParserException, UnsupportedEncodingException
 	{
-		Parser parser = new Parser(new Lexer(new Page(new FileInputStream("test.html"), "UTF-8")));
-		TlVisitor tlv = new TlVisitor();
-		parser.visitAllNodesWith(tlv);
+		Parser parser = new Parser(new Lexer(new Page(new FileInputStream("test.html"), "UTF-8")), Parser.DEVNULL);
+		NodeList res = parser.extractAllNodesThatMatch(getDownloadsFilter());
+		for (int i = 0; i < res.size(); i++)
+		{
+			System.err.println(res.elementAt(i).toHtml());
+		}
 	}
 
-	private void updateCategory(int cat) throws IOException, ParserException
+	private void updateCategory(int cat) throws ParserException, IOException 
 	{
 		URL url = new URL("http://www.torrentleech.org/browse.php?cat="+cat);
 		URLConnection conn = (HttpURLConnection) url.openConnection();
 		conn.setRequestProperty("Cookie", getCookiesString());
-		Parser parser = new Parser(conn);
-		TlVisitor tlv = new TlVisitor();
-		parser.visitAllNodesWith(tlv);
 	}
 
 	public void login() throws IOException
@@ -137,5 +148,57 @@ public class TorrentLeech
 			String value = toks.nextToken();
 			m_cookies.put(key, value);
 		}
-	}	
+	}
+	
+	private NodeFilter getDownloadsFilter()
+	{
+        NodeClassFilter filter0 = new NodeClassFilter ();
+        try { filter0.setMatchClass (Class.forName ("org.htmlparser.tags.TableRow")); } catch (ClassNotFoundException cnfe) { cnfe.printStackTrace (); }
+        NodeClassFilter filter1 = new NodeClassFilter ();
+        try { filter1.setMatchClass (Class.forName ("org.htmlparser.tags.TableColumn")); } catch (ClassNotFoundException cnfe) { cnfe.printStackTrace (); }
+        TagNameFilter filter2 = new TagNameFilter ();
+        filter2.setName ("CENTER");
+        NodeClassFilter filter3 = new NodeClassFilter ();
+        try { filter3.setMatchClass (Class.forName ("org.htmlparser.tags.LinkTag")); } catch (ClassNotFoundException cnfe) { cnfe.printStackTrace (); }
+        HasSiblingFilter filter4 = new HasSiblingFilter ();
+        filter4.setSiblingFilter (filter3);
+        NodeFilter[] array0 = new NodeFilter[2];
+        array0[0] = filter2;
+        array0[1] = filter4;
+        AndFilter filter5 = new AndFilter ();
+        filter5.setPredicates (array0);
+        HasChildFilter filter6 = new HasChildFilter ();
+        filter6.setRecursive (false);
+        filter6.setChildFilter (filter5);
+        NodeFilter[] array1 = new NodeFilter[2];
+        array1[0] = filter1;
+        array1[1] = filter6;
+        AndFilter filter7 = new AndFilter ();
+        filter7.setPredicates (array1);
+        HasChildFilter filter8 = new HasChildFilter ();
+        filter8.setRecursive (true);
+        filter8.setChildFilter (filter7);
+        NodeClassFilter filter9 = new NodeClassFilter ();
+        try { filter9.setMatchClass (Class.forName ("org.htmlparser.tags.TableColumn")); } catch (ClassNotFoundException cnfe) { cnfe.printStackTrace (); }
+        HasAttributeFilter filter10 = new HasAttributeFilter ();
+        filter10.setAttributeName ("class");
+        filter10.setAttributeValue ("xexe");
+        NodeFilter[] array2 = new NodeFilter[2];
+        array2[0] = filter9;
+        array2[1] = filter10;
+        AndFilter filter11 = new AndFilter ();
+        filter11.setPredicates (array2);
+        HasChildFilter filter12 = new HasChildFilter ();
+        filter12.setRecursive (false);
+        filter12.setChildFilter (filter11);
+        NotFilter filter13 = new NotFilter ();
+        filter13.setPredicate (filter12);
+        NodeFilter[] array3 = new NodeFilter[3];
+        array3[0] = filter0;
+        array3[1] = filter8;
+        array3[2] = filter13;
+        AndFilter filter14 = new AndFilter ();
+        filter14.setPredicates (array3);
+        return filter14;
+	}
 }
