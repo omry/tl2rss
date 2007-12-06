@@ -1,8 +1,8 @@
 package net.firefang.tl2rss;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -42,6 +42,8 @@ import org.htmlparser.tags.LinkTag;
 import org.htmlparser.tags.TableColumn;
 import org.htmlparser.util.NodeList;
 import org.htmlparser.util.ParserException;
+import org.mortbay.jetty.Server;
+import org.mortbay.jetty.handler.DefaultHandler;
 
 import com.sun.syndication.feed.synd.SyndEntry;
 import com.sun.syndication.feed.synd.SyndEntryImpl;
@@ -59,17 +61,14 @@ public class TorrentLeech
 	
 	private Hashtable m_torrents = new Hashtable();
 	
-	public static void main(String[] args) throws IOException, ParserException, FeedException
+	
+	public TorrentLeech(Properties props)
 	{
-		Properties props = new Properties();
-		props.load(new FileInputStream("conf.properties"));
-		TorrentLeech tl = new TorrentLeech(props.getProperty("user"), props.getProperty("pass"));
-		tl.test();
-		System.err.println(tl.getRSS());
-		tl.login();
-		tl.updateCategory(7);
+		m_user = props.getProperty("user");
+		m_password = props.getProperty("pass");
 		
-		System.err.println(tl.getRSS());
+		Server server = new Server(Integer.parseInt(props.getProperty("port", "8080")));
+		server.setHandler(new DefaultHandler());
 	}
 	
 	public String getRSS() throws FeedException
@@ -128,17 +127,13 @@ public class TorrentLeech
 		return output.outputString(feed);
 	}
 
-	public TorrentLeech(String user, String password)
-	{
-		m_user = user;
-		m_password = password;
-	}
-	
-	private void test() throws FileNotFoundException, ParserException, UnsupportedEncodingException
-	{
-		processTorrentsStream(new FileInputStream("test.html"));
 
-	}
+	
+//	private void test() throws FileNotFoundException, ParserException, UnsupportedEncodingException
+//	{
+//		processTorrentsStream(new FileInputStream("test.html"));
+//
+//	}
 
 	private Torrent getTorrent(String id)
 	{
@@ -364,4 +359,26 @@ public class TorrentLeech
 			return id + " " + name + ", " + date + ", " + downloadLink;
 		}
 	}
+	
+	public static void main(String[] args) throws IOException, ParserException, FeedException
+	{
+		File file = new File("conf.properties");
+		if (!file.exists())
+		{
+			System.err.println("Missing conf.properties, copy rename sample-conf.properties and fill in the missing bits");
+			return;
+		}
+		Properties props = new Properties();
+		props.load(new FileInputStream(file));
+		
+		TorrentLeech tl = new TorrentLeech(props);
+//		tl.test();
+//		System.err.println(tl.getRSS());
+//		tl.login();
+//		tl.updateCategory(7);
+//		
+//		System.err.println(tl.getRSS());
+	}
+	
+	
 }
