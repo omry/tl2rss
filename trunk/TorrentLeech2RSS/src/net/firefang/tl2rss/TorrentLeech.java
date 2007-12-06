@@ -65,8 +65,9 @@ public class TorrentLeech
 		props.load(new FileInputStream("conf.properties"));
 		TorrentLeech tl = new TorrentLeech(props.getProperty("user"), props.getProperty("pass"));
 		tl.test();
-//		tl.login();
-//		tl.updateCategory(7);
+		System.err.println(tl.getRSS());
+		tl.login();
+		tl.updateCategory(7);
 		
 		System.err.println(tl.getRSS());
 	}
