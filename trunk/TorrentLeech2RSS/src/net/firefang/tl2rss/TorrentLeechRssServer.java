@@ -80,6 +80,8 @@ public class TorrentLeechRssServer
 	private String m_systemPassword;
 
 	private String m_updateCategories;
+
+	protected long m_torrentTimeoutDays;
 	
 	public TorrentLeechRssServer(Properties props) throws Exception
 	{
@@ -89,10 +91,12 @@ public class TorrentLeechRssServer
 		m_updateCategories = props.getProperty("update_categories", "7");
 		m_host = props.getProperty("host", "localhost");
 		m_port = Integer.parseInt(props.getProperty("port", "8080"));
+		m_torrentTimeoutDays = Integer.parseInt(props.getProperty("torrent_timeout_days", "7"));
+		
+		
 		m_updateInterval = Integer.parseInt(props.getProperty("update_interval", "10"));
 		startUpdateThread();
-		
-		
+		startCleanupThread();
 		
 		Server server = new Server(m_port);
 		server.setHandler(new DefaultHandler()
@@ -155,6 +159,38 @@ public class TorrentLeechRssServer
 		server.start();
 	}
 	
+	private void startCleanupThread()
+	{
+		new Thread()
+		{
+			public void run()
+			{
+				while(true)
+				{
+					long now = System.currentTimeMillis();
+					Enumeration ids = m_torrents.keys();
+					while(ids.hasMoreElements())
+					{
+						String id = (String) ids.nextElement();
+						Torrent t = (Torrent) m_torrents.get(id);
+						if (now - t.creationTime > (m_torrentTimeoutDays * 24 * 60 * 60 * 1000));
+						{
+							Log.info("Torrent expired, removing " + t.name);
+							m_torrents.remove(id);
+						}
+					}
+					
+					try
+					{
+						Thread.sleep(60 * 60 * 10000);
+					} catch (InterruptedException e)
+					{
+					}
+				}
+			}
+		}.start();
+	}
+
 	private void startUpdateThread() throws IOException
 	{
         final UserSession session = new UserSession(m_systemUser, m_systemPassword);
@@ -177,7 +213,7 @@ public class TorrentLeechRssServer
 						updateTorrents(session);
 					} catch (IOException e1)
 					{
-						Log.warn("IOException when updating torrents",e1);
+						Log.info("IOException when updating torrents",e1);
 					}
 					
 					try
@@ -418,9 +454,11 @@ public class TorrentLeechRssServer
 		String name;
 		String date;
 		String downloadLink;
+		long creationTime;
 		
 		public Torrent(String id)
 		{
+			creationTime = System.currentTimeMillis();
 			this.id = id;
 		}
 		
