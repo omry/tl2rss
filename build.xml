@@ -1,0 +1,51 @@
+<project name="TL2RSS" default="dist" basedir=".">
+	
+	<!-- ================================= 
+          target: clean              
+         ================================= -->
+    <target name="clean" depends="setup" description="--> description">
+        <delete dir="${BUILD_DIR}"></delete>
+    </target>
+
+	
+	<!-- ================================= 
+          target: dist              
+         ================================= -->
+    <target name="dist" depends="setup,clean" description="--> description">
+    	
+    	<mkdir dir="${BUILD_DIR}/bin"/>
+    	<mkdir dir="${BUILD_DIR}/dist"/>
+    	<mkdir dir="${BUILD_DIR}/dist/lib"/>
+    	
+    	
+    	<javac source="1.3" target="1.3" srcdir="src" destdir="${BUILD_DIR}/bin">
+    		<classpath path="lib/htmlparser.jar"/>
+   			<classpath path="lib/jetty-6.1.6.jar"/>
+    		<classpath path="lib/jetty-util-6.1.6.jar"/>
+    		<classpath path="lib/rome-0.9.jar"/>
+    		<classpath path="lib/servlet-api-2.5-6.1.6.jar"/>
+    		<classpath path="lib/jdom-1.0.jar"/>
+    	</javac>
+    	
+    	<copy todir="${BUILD_DIR}/dist/lib">
+    		<fileset dir="lib">
+    			<include name="*.jar"/>
+			</fileset>
+    	</copy>
+    	
+    	<copy file="sample-conf.properties" todir="${BUILD_DIR}/dist/"></copy>
+    	
+		<jar destfile="${BUILD_DIR}/dist/tl2rss-${version}.jar" basedir="${BUILD_DIR}/bin" update="true" duplicate="fail">
+			<manifest>
+				<attribute name="Main-Class" value="net.firefang.tl2rss.TorrentLeechRssServer" />
+				<attribute name="Class-Path" value="lib/htmlparser.jar lib/jetty-6.1.6.jar lib/jetty-util-6.1.6.jar lib/rome-0.9.jar lib/servlet-api-2.5-6.1.6.jar lib/jdom-1.0.jar" />
+			</manifest>
+		</jar>
+    </target>
+	
+    <target name="setup">
+    	<property name="BUILD_DIR" value="build"/>
+    	<loadproperties srcfile="build.properties" />
+    </target>
+	
+</project>

@@ -66,7 +66,7 @@ import com.sun.syndication.io.impl.DateParser;
 /**
  * @author omry
  */
-public class TorrentLeech
+public class TorrentLeechRssServer
 {
 	private Hashtable m_torrents = new Hashtable();
 	
@@ -81,7 +81,7 @@ public class TorrentLeech
 
 	private String m_updateCategories;
 	
-	public TorrentLeech(Properties props) throws Exception
+	public TorrentLeechRssServer(Properties props) throws Exception
 	{
 		m_userSessions = new Hashtable();
 		m_systemUser = props.getProperty("system_user");
@@ -554,7 +554,7 @@ public class TorrentLeech
 		}
 		Properties props = new Properties();
 		props.load(new FileInputStream(file));
-		new TorrentLeech(props);
+		new TorrentLeechRssServer(props);
 	}
 	
 }
