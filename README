@@ -1,0 +1,28 @@
+License:
+TorrentLeech2RSS is distributed under the GPL 3.0, see gpl-3.0.txt for more information.
+
+Requirements:
+You need Java to run TorrentLeech2RSS, tested with Java 1.5
+
+Installation:
+Extract the zip somewhere
+Rename sample-conf.properties to conf.properties, and open it with a text editor.
+1. Fill in your username and password in the configuration file.
+2. Edit update_categories to contain a comma seperated list of torrentleech category ids.
+See TorrentLeech for a full list of ids, but here are a few common ones:
+4 : Games/PC ISO
+7 : Episodes/TV
+19: Movies/XviD
+35: Movies/HD-XviD
+
+Running:
+tl2rss need to run constantly.
+to run it, use the command:
+
+java -jar tl2rss.jar
+
+Or double click on the jar file. (See the processes list to be sure it's running if you start it this way).
+
+RSS Feed:
+Provided that you did not change the default port (8080), your rss feed is:
+http://localhost:8080/?user=YOUR_USER&pass=YOUR_PASS
