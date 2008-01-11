@@ -94,7 +94,7 @@ public class TorrentLeechRssServer
 		m_torrentTimeoutDays = Integer.parseInt(props.getProperty("torrent_timeout_days", "7"));
 		
 		
-		m_updateInterval = Integer.parseInt(props.getProperty("update_interval", "10"));
+		m_updateInterval = Integer.parseInt(props.getProperty("update_interval", "25"));
 		startUpdateThread();
 		startCleanupThread();
 		
