@@ -9,7 +9,7 @@ Extract the zip somewhere
 Rename sample-conf.properties to conf.properties, and open it with a text editor.
 1. Fill in your username and password in the configuration file.
 2. Edit update_categories to contain a comma seperated list of torrentleech category ids.
-See the TorrentLeech size for a full list of ids, but here are a few common ones:
+See the TorrentLeech site for a full list of ids, but here are a few common ones:
 
 	Games/PC ISO 	: 4
 	Episodes/TV 	: 7
