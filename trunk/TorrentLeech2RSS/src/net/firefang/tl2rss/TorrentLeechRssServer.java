@@ -76,8 +76,8 @@ public class TorrentLeechRssServer
 	private int m_port;
 	
 	private int m_updateInterval;
-	private String m_systemUser;
-	private String m_systemPassword;
+	private String m_uid;
+	private String m_pass;
 
 	private String m_updateCategories;
 
@@ -86,8 +86,8 @@ public class TorrentLeechRssServer
 	public TorrentLeechRssServer(Properties props) throws Exception
 	{
 		m_userSessions = new Hashtable();
-		m_systemUser = props.getProperty("system_user");
-		m_systemPassword = props.getProperty("system_pass");
+		m_uid = props.getProperty("uid");
+		m_pass = props.getProperty("pass");
 		m_updateCategories = props.getProperty("update_categories", "7");
 		m_host = props.getProperty("host", "localhost");
 		m_port = Integer.parseInt(props.getProperty("port", "8080"));
@@ -105,15 +105,10 @@ public class TorrentLeechRssServer
 					HttpServletResponse response, int dispatch) throws IOException,
 					ServletException
 			{
-		        String user = request.getParameter("user");
-		        if (user == null) throw new ServletException("Missing user parameter");
-		        String pass = request.getParameter("pass");
-		        if (pass == null) throw new ServletException("Missing pass parameter");
-		        
-		        UserSession session = (UserSession) m_userSessions.get(user + ":::" + pass);
+		        UserSession session = (UserSession) m_userSessions.get("THE_SESSION");
 		        if (session == null)
 		        {
-		        	m_userSessions.put(user + ":::" + pass, session = new UserSession(user, pass));
+		        	m_userSessions.put("THE_SESSION", session = new UserSession(m_uid, m_pass));
 		        }
 		        
 		        synchronized(session)
@@ -193,13 +188,13 @@ public class TorrentLeechRssServer
 
 	private void startUpdateThread() throws IOException
 	{
-        final UserSession session = new UserSession(m_systemUser, m_systemPassword);
-       	m_userSessions.put(m_systemUser + ":::" + m_systemPassword, session);
+        final UserSession session = new UserSession(m_uid,m_pass);
+       	m_userSessions.put("THE_SESSION", session);
 
        	Log.info("Authenticating system user");
 		if (!session.authenticate())
 		{
-			throw new IOException("Unable to authenticate with system user and password");
+			throw new IOException("Unable to authenticate with systemuser and password");
 		}
 		
 		new Thread("Torrents update thread")
@@ -290,7 +285,7 @@ public class TorrentLeechRssServer
 			
 			SyndEntry entry = new SyndEntryImpl();
 			entry.setTitle(t.name);
-			entry.setLink(baseUrl + "/download?id=" + t.id + "&user=" + session.username + "&pass=" + session.password);
+			entry.setLink(baseUrl + "/download?id=" + t.id + "&user=" + session.uid + "&pass=" + session.pass);
 			entry.setPublishedDate(DateParser.parseDate(t.date));
 			entries.add(entry);
 		}
@@ -470,17 +465,17 @@ public class TorrentLeechRssServer
 	
 	private static class UserSession
 	{
-		String username;
-		String password;
+		String uid;
+		String pass;
 		Properties m_cookies = new Properties();
 		
 		private boolean m_failedToAuthenticate;
 		
-		public UserSession(String username, String password)
+		public UserSession(String uid,String pass)
 		{
 			super();
-			this.username = username;
-			this.password = password;
+			this.uid = uid;
+			this.pass = pass;
 		}
 		
 		public boolean authenticate() throws IOException
@@ -509,8 +504,18 @@ public class TorrentLeechRssServer
 				return false;
 			}
 		}		
-		
-		public void login() throws IOException
+	
+		public void login()
+		{
+			m_cookies = new Properties();
+			m_cookies.put("uid",uid);
+			m_cookies.put("pass",pass);
+
+
+//t_access=1234005622; lang=en; last_browse=1234005622; uid=138310; pass=452db44203fc0f9256d4dc44ed19713e; bbuserid=138310; bbpassword=27734b306ad8894a96db52c4bf72aa1f
+		}
+/*
+		public void login1() throws IOException
 		{
 			String uip = getUIP();
 			URL url = new URL("http://www.torrentleech.org/takelogin.php");
@@ -528,7 +533,7 @@ public class TorrentLeechRssServer
 			List cookies = (List) conn.getHeaderFields().get("Set-Cookie");
 			handleCookies(cookies);
 		}
-		
+*/		
 		private String getUIP() throws IOException
 		{
 			URL url = new URL("http://www.torrentleech.org/login.php");
@@ -551,7 +556,7 @@ public class TorrentLeechRssServer
 		
 		private void handleCookies(List cookies)
 		{
-			for(int i=0;i<cookies.size();i++)
+			for(int i=0;cookies != null && i<cookies.size();i++)
 			{
 				String s = (String) cookies.get(i);
 				StringTokenizer t = new StringTokenizer(s, "="); // key=value;exp;location
@@ -564,6 +569,10 @@ public class TorrentLeechRssServer
 
 		private String getCookiesString()
 		{
+			// touch timestamps
+			m_cookies.put("last_access", "" + (System.currentTimeMillis() / 1000));
+			m_cookies.put("last_browse", "" + (System.currentTimeMillis() / 1000));
+
 			StringBuffer b = new StringBuffer();
 			Enumeration keys = m_cookies.keys();
 			while(keys.hasMoreElements())
