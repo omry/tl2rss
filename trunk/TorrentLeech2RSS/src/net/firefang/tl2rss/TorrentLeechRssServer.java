@@ -60,10 +60,6 @@ import com.sun.syndication.io.SyndFeedOutput;
 import com.sun.syndication.io.impl.DateParser;
 
 /**
- * todo: expire user sessions.
- */
-
-/**
  * @author omry
  */
 public class TorrentLeechRssServer
