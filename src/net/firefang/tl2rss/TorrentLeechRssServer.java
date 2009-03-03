@@ -217,7 +217,8 @@ public class TorrentLeechRssServer
 			}
 		}.start();
 	}
-
+	
+	boolean m_firstRun = true;
 	protected void updateTorrents(UserSession session) throws IOException
 	{
 		StringTokenizer tok = new StringTokenizer(m_updateCategories, ", ");
@@ -226,12 +227,13 @@ public class TorrentLeechRssServer
 			String cat = tok.nextToken();
 			try
 			{
-				updateCategory(cat, session);
+				updateCategory(cat, session, m_firstRun);
 			} catch (ParserException e)
 			{
 				Log.warn("Error parsing html of category " + cat,e);
 			} 
 		}
+		m_firstRun = false;
 	}
 
 	public String getRSS(UserSession session) throws FeedException
@@ -309,13 +311,25 @@ public class TorrentLeechRssServer
 		return (Torrent) m_torrents.get(id);
 	}
 
-	private void updateCategory(String cat, UserSession session) throws ParserException, IOException 
+	private void updateCategory(String cat, UserSession session, boolean firstRun) throws ParserException, IOException 
 	{
-		URL url = new URL("http://www.torrentleech.org/browse.php?cat="+cat);
-		Log.warn("Updating torrents, category = " + cat);
-		URLConnection conn = (HttpURLConnection) url.openConnection();
-		conn.setRequestProperty("Cookie", session.getCookiesString());
-		processTorrentsStream(conn.getInputStream());
+		List<String> urls = new ArrayList<String>();
+		urls.add("http://www.torrentleech.org/browse.php?cat="+cat);
+		if (firstRun) // grab a few more additional pages
+		{
+			urls.add("http://www.torrentleech.org/browse.php?page=1&cat="+cat);
+			urls.add("http://www.torrentleech.org/browse.php?page=2&cat="+cat);
+			urls.add("http://www.torrentleech.org/browse.php?page=3&cat="+cat);
+		}
+
+		for(String u : urls)
+		{
+			URL url = new URL(u);
+			Log.warn("Updating torrents : " + url);
+			URLConnection conn = (HttpURLConnection) url.openConnection();
+			conn.setRequestProperty("Cookie", session.getCookiesString());
+			processTorrentsStream(conn.getInputStream());
+		}
 	}
 	
 	private void processTorrentsStream(InputStream in) throws UnsupportedEncodingException, ParserException
