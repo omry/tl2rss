@@ -18,7 +18,7 @@
     	<mkdir dir="${BUILD_DIR}/dist/lib"/>
     	
     	
-    	<javac source="1.3" target="1.3" srcdir="src" debug="lines" destdir="${BUILD_DIR}/bin">
+    	<javac source="1.5" target="1.5" srcdir="src" debug="lines" destdir="${BUILD_DIR}/bin">
     		<classpath path="lib/htmlparser.jar"/>
    			<classpath path="lib/jetty-6.1.6.jar"/>
     		<classpath path="lib/jetty-util-6.1.6.jar"/>
