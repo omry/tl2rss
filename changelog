@@ -1,2 +1,3 @@
+Version 1.1.2
 05/03/2009: Added connection timeout when updating torrents to prevent update thread from getting stuck in case the server does not respond
 03/03/2009: Changed to grab a few additional pages for each category uppon first run
