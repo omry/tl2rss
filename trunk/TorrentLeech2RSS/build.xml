@@ -34,6 +34,9 @@
     	</copy>
     	
     	<copy file="sample-conf.properties" todir="${BUILD_DIR}/dist/"></copy>
+    	<copy file="changelog" todir="${BUILD_DIR}/dist/"></copy>
+    	<copy file="README" todir="${BUILD_DIR}/dist/"></copy>
+    	<copy file="gpl-3.0.txt" todir="${BUILD_DIR}/dist/"></copy>
     	
 		<jar destfile="${BUILD_DIR}/dist/tl2rss.jar" basedir="${BUILD_DIR}/bin" update="true" duplicate="fail">
 			<manifest>
