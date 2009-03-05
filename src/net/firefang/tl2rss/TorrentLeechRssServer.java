@@ -553,7 +553,14 @@ public class TorrentLeechRssServer
 			String key = t.nextToken();
 			StringTokenizer toks = new StringTokenizer(t.nextToken(),";");
 			String value = toks.nextToken();
-			m_cookies.put(key, value);
+			if (value.equals("deleted"))
+			{
+				m_cookies.remove(key);
+			}
+			else
+			{
+				m_cookies.put(key, value);
+			}
 		}
 
 		saveCookies();
