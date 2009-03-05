@@ -1,3 +1,6 @@
+Version 1.2
+05/03/2009 : No longer requires cookies in configuration file, now displays a torrentleech login screen if needed when accessed through a browser.
+
 Version 1.1.2
 05/03/2009: Fixed download links to no longer contain session id and uid.
 05/03/2009: Added connection timeout when updating torrents to prevent update thread from getting stuck in case the server does not respond

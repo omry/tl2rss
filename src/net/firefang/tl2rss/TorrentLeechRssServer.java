@@ -1,11 +1,11 @@
 package net.firefang.tl2rss;
 
-import java.io.BufferedReader;
+import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
@@ -18,8 +18,10 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.Enumeration;
-import java.util.Hashtable;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.StringTokenizer;
 import java.util.Vector;
@@ -64,26 +66,31 @@ import com.sun.syndication.io.impl.DateParser;
  */
 public class TorrentLeechRssServer
 {
-	private Hashtable m_torrents = new Hashtable();
-	
-	private Hashtable m_userSessions;
+	private Map<String, Torrent> m_torrents = new HashMap<String, Torrent>();
 	
 	private String m_host;
 	private int m_port;
 	
 	private int m_updateInterval;
-	private String m_uid;
-	private String m_pass;
 
 	private String m_updateCategories;
 
 	protected long m_torrentTimeoutDays;
 	
+	Map<String,String> m_cookies = new HashMap<String, String>();
+	
 	public TorrentLeechRssServer(Properties props) throws Exception
 	{
-		m_userSessions = new Hashtable();
-		m_uid = props.getProperty("uid");
-		m_pass = props.getProperty("pass");
+		Runtime.getRuntime().addShutdownHook(new Thread()
+		{
+			public void run()
+			{
+				saveCookies();
+			}
+		});
+		
+		loadCookies();
+		
 		m_updateCategories = props.getProperty("update_categories", "7");
 		m_host = props.getProperty("host", "localhost");
 		m_port = Integer.parseInt(props.getProperty("port", "8080"));
@@ -101,32 +108,17 @@ public class TorrentLeechRssServer
 					HttpServletResponse response, int dispatch) throws IOException,
 					ServletException
 			{
-		        UserSession session = (UserSession) m_userSessions.get("THE_SESSION");
-		        if (session == null)
+		        if (target.startsWith("/proxy/"))
 		        {
-		        	m_userSessions.put("THE_SESSION", session = new UserSession(m_uid, m_pass));
+		        	proxy(request, response, target.substring("/proxy/".length()));
 		        }
-		        
-		        synchronized(session)
-		        {
-		        	if (!session.isAuthenticated())
-		        	{
-		        		if (!session.authenticate())
-		        		{
-		        			((Request)request).setHandled(true);
-		        			response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-		        			response.getWriter().write("Not authorized");
-		        			return;
-		        		}
-		        	}
-		        }
-		        
+		        else
 				if (target.equals("/download"))
 				{
 			        String id = request.getParameter("id");
 			        if (id == null) throw new ServletException("Missing id parameter");
-			        Torrent t = (Torrent) m_torrents.get(id);
-			        InputStream in = doGet(t.downloadLink, session);
+			        Torrent t = m_torrents.get(id);
+			        InputStream in = doGet(t.downloadLink);
 			        response.setContentType("application/x-bittorrent");
 			        OutputStream out = response.getOutputStream();
 			        int c;
@@ -134,14 +126,22 @@ public class TorrentLeechRssServer
 				}
 				else
 				{
-			        response.setContentType("text/xml");
-			        try
-					{
-						response.getWriter().write(getRSS(session));
-					} catch (FeedException e)
-					{
-						throw new ServletException(e);
-					}
+		        	if (!isAuthenticated())
+		        	{
+	        			response.sendRedirect("proxy/login.php");
+	        			((Request)request).setHandled(true);
+		        	}
+		        	else
+		        	{
+		        		response.setContentType("text/xml");
+		        		try
+		        		{
+		        			response.getWriter().write(getRSS());
+		        		} catch (FeedException e)
+		        		{
+		        			throw new ServletException(e);
+		        		}
+		        	}
 				}
 		        
 		        ((Request)request).setHandled(true);
@@ -150,6 +150,62 @@ public class TorrentLeechRssServer
 		server.start();
 	}
 	
+	private void loadCookies()
+	{
+		if (!new File("cookies.txt").exists()) return;
+		
+		Properties props = new Properties();
+		FileInputStream fin = null;
+		try
+		{
+			fin = new FileInputStream("cookies.txt");
+			props.load(fin);
+			Enumeration<Object> keys = props.keys();
+			while(keys.hasMoreElements())
+			{
+				String key =(String)keys.nextElement();
+				String value = props.getProperty(key);
+				m_cookies.put(key, value);
+			}
+		} catch (IOException e)
+		{
+			Log.warn(e);
+		}
+		finally
+		{
+			try
+			{
+				fin.close();
+			} catch (IOException e)
+			{
+			}
+		}
+	}
+
+	protected void saveCookies()
+	{
+		try
+		{
+			FileOutputStream fos = new FileOutputStream("cookies.txt");
+			try
+			{
+				for(String k : m_cookies.keySet())
+				{
+					String v = m_cookies.get(k);
+					fos.write((k + "=" + v + "\n").getBytes());
+				}
+			}
+			finally
+			{
+				fos.close();
+			}
+		} 
+		catch (IOException e)
+		{
+			Log.warn(e);
+		}
+	}
+
 	private void startCleanupThread()
 	{
 		new Thread()
@@ -159,11 +215,9 @@ public class TorrentLeechRssServer
 				while(true)
 				{
 					long now = System.currentTimeMillis();
-					Enumeration ids = m_torrents.keys();
-					while(ids.hasMoreElements())
+					for (String id : m_torrents.keySet())
 					{
-						String id = (String) ids.nextElement();
-						Torrent t = (Torrent) m_torrents.get(id);
+						Torrent t = m_torrents.get(id);
 						if (now - t.creationTime > (m_torrentTimeoutDays * 24 * 60 * 60 * 1000));
 						{
 							Log.info("Torrent expired, removing " + t.name);
@@ -184,15 +238,6 @@ public class TorrentLeechRssServer
 
 	private void startUpdateThread() throws IOException
 	{
-        final UserSession session = new UserSession(m_uid,m_pass);
-       	m_userSessions.put("THE_SESSION", session);
-
-       	Log.info("Authenticating system user");
-		if (!session.authenticate())
-		{
-			throw new IOException("Unable to authenticate with systemuser and password");
-		}
-		
 		new Thread("Torrents update thread")
 		{
 			public void run()
@@ -201,7 +246,21 @@ public class TorrentLeechRssServer
 				{
 					try
 					{
-						updateTorrents(session);
+						while(!isAuthenticated())
+						{
+							synchronized (TorrentLeechRssServer.this)
+							{
+								try
+								{
+									Log.info("Waiting for authentication");
+									TorrentLeechRssServer.this.wait();
+								} catch (InterruptedException e)
+								{
+								}
+							}
+						}
+						
+						updateTorrents();
 					} catch (IOException e1)
 					{
 						Log.info("IOException when updating torrents",e1);
@@ -219,7 +278,7 @@ public class TorrentLeechRssServer
 	}
 	
 	boolean m_firstRun = true;
-	protected void updateTorrents(UserSession session) throws IOException
+	protected void updateTorrents() throws IOException
 	{
 		StringTokenizer tok = new StringTokenizer(m_updateCategories, ", ");
 		while(tok.hasMoreElements())
@@ -227,7 +286,7 @@ public class TorrentLeechRssServer
 			String cat = tok.nextToken();
 			try
 			{
-				updateCategory(cat, session, m_firstRun);
+				updateCategory(cat, m_firstRun);
 			} catch (ParserException e)
 			{
 				Log.warn("Error parsing html of category " + cat,e);
@@ -236,7 +295,8 @@ public class TorrentLeechRssServer
 		m_firstRun = false;
 	}
 
-	public String getRSS(UserSession session) throws FeedException
+	@SuppressWarnings("unchecked")
+	public String getRSS() throws FeedException
 	{
 		String feedType = "rss_2.0";
 		SyndFeed feed = new SyndFeedImpl();
@@ -250,10 +310,9 @@ public class TorrentLeechRssServer
 		feed.setEntries(entries);
 		
 		Vector v = new Vector();
-		Enumeration torrents = m_torrents.elements();
-		while(torrents.hasMoreElements())
+		for(Torrent t : m_torrents.values())
 		{
-			v.add(torrents.nextElement());
+			v.add(t);
 		}
 		
 		Collections.sort(v, new Comparator()
@@ -283,7 +342,7 @@ public class TorrentLeechRssServer
 			
 			SyndEntry entry = new SyndEntryImpl();
 			entry.setTitle(t.name);
-			entry.setLink(baseUrl + "/download?id=" + t.id + "&user=" + session.uid + "&pass=" + session.pass);
+			entry.setLink(baseUrl + "/download?id=" + t.id);
 			entry.setPublishedDate(DateParser.parseDate(t.date));
 			entries.add(entry);
 		}
@@ -311,7 +370,7 @@ public class TorrentLeechRssServer
 		return (Torrent) m_torrents.get(id);
 	}
 
-	private void updateCategory(String cat, UserSession session, boolean firstRun) throws ParserException, IOException 
+	private void updateCategory(String cat, boolean firstRun) throws ParserException, IOException 
 	{
 		List<String> urls = new ArrayList<String>();
 		urls.add("http://www.torrentleech.org/browse.php?cat="+cat);
@@ -329,7 +388,7 @@ public class TorrentLeechRssServer
 			URLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setConnectTimeout(30000);
             conn.setReadTimeout(30000);
-			conn.setRequestProperty("Cookie", session.getCookiesString());
+			conn.setRequestProperty("Cookie", getCookiesString());
 			InputStream in = conn.getInputStream();
 			try
 			{
@@ -403,11 +462,11 @@ public class TorrentLeechRssServer
 	}
 
 	
-	private InputStream doGet(String u, UserSession session) throws IOException
+	private InputStream doGet(String u) throws IOException
 	{
 		URL url = new URL(u);
 		URLConnection conn = (HttpURLConnection) url.openConnection();
-		conn.setRequestProperty("Cookie", session.getCookiesString());
+		conn.setRequestProperty("Cookie", getCookiesString());
 		return conn.getInputStream();
 	}
 
@@ -483,133 +542,66 @@ public class TorrentLeechRssServer
 		}
 	}
 	
-	private static class UserSession
+
+	private void handleCookies(List<String> cookies)
 	{
-		String uid;
-		String pass;
-		Properties m_cookies = new Properties();
-		
-		private boolean m_failedToAuthenticate;
-		
-		public UserSession(String uid,String pass)
+		boolean wasAuthenticated = isAuthenticated();
+		for(int i=0;cookies != null && i<cookies.size();i++)
 		{
-			super();
-			this.uid = uid;
-			this.pass = pass;
-		}
-		
-		public boolean authenticate() throws IOException
-		{
-			if (m_failedToAuthenticate) return false;
-			
-			login();
-			boolean success = isAuthenticated();
-			if (!success)
-			{
-				m_failedToAuthenticate = true;
-			}
-			return success;
-		}
-		
-		public boolean isAuthenticated()
-		{
-			String uid = m_cookies.getProperty("uid");
-			if (uid == null) return false;
-			try
-			{
-				Integer.parseInt(uid);
-				return true;
-			} catch (NumberFormatException e)
-			{
-				return false;
-			}
-		}		
-	
-		public void login()
-		{
-			m_cookies = new Properties();
-			m_cookies.put("uid",uid);
-			m_cookies.put("pass",pass);
-
-
-//t_access=1234005622; lang=en; last_browse=1234005622; uid=138310; pass=452db44203fc0f9256d4dc44ed19713e; bbuserid=138310; bbpassword=27734b306ad8894a96db52c4bf72aa1f
-		}
-/*
-		public void login1() throws IOException
-		{
-			String uip = getUIP();
-			URL url = new URL("http://www.torrentleech.org/takelogin.php");
-			HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-			conn.setDoOutput(true);
-			conn.setRequestProperty("User-Agent", "Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.8) Gecko/20071004 Iceweasel/2.0.0.8 (Debian-2.0.0.8-1)");
-			conn.setRequestProperty("Referer","http://www.torrentleech.org/login.php");
-			conn.setRequestProperty("Cookie", getCookiesString());
-			byte data[] = ("username="+username+"&password="+password+"&uip="+ uip).getBytes();
-			conn.setRequestProperty("Content-Length", ""+data.length);
-			OutputStream out = conn.getOutputStream();
-			out.write(data);
-			conn.setInstanceFollowRedirects(false);
-			conn.connect();
-			List cookies = (List) conn.getHeaderFields().get("Set-Cookie");
-			handleCookies(cookies);
-		}
-*/		
-		private String getUIP() throws IOException
-		{
-			URL url = new URL("http://www.torrentleech.org/login.php");
-			HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-			List cookies = (List) conn.getHeaderFields().get("Set-Cookie");
-			handleCookies(cookies);
-			BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-			String line;
-			Pattern pattern = Pattern.compile("<input type=hidden name=uip value='(.*)'>");
-			while((line = reader.readLine()) != null)
-			{
-				Matcher matcher = pattern.matcher(line);
-				if (matcher.matches())
-				{
-					return matcher.group(1);
-				}
-			}
-			return "";
-		}
-		
-		private void handleCookies(List cookies)
-		{
-			for(int i=0;cookies != null && i<cookies.size();i++)
-			{
-				String s = (String) cookies.get(i);
-				StringTokenizer t = new StringTokenizer(s, "="); // key=value;exp;location
-				String key = t.nextToken();
-				StringTokenizer toks = new StringTokenizer(t.nextToken(),";");
-				String value = toks.nextToken();
-				m_cookies.put(key, value);
-			}
+			String s = cookies.get(i);
+			StringTokenizer t = new StringTokenizer(s, "="); // key=value;exp;location
+			String key = t.nextToken();
+			StringTokenizer toks = new StringTokenizer(t.nextToken(),";");
+			String value = toks.nextToken();
+			m_cookies.put(key, value);
 		}
 
-		private String getCookiesString()
-		{
-			// touch timestamps
-			m_cookies.put("last_access", "" + (System.currentTimeMillis() / 1000));
-			m_cookies.put("last_browse", "" + (System.currentTimeMillis() / 1000));
-
-			StringBuffer b = new StringBuffer();
-			Enumeration keys = m_cookies.keys();
-			while(keys.hasMoreElements())
-			{
-				String key = (String) keys.nextElement();
-				String value = (String) m_cookies.get(key);
-				b.append(key + "=" + value);
-				if (keys.hasMoreElements())
-				{
-					b.append(";");
-				}
-			}
-			return b.toString();
-		}
-
+		saveCookies();
 		
+		if (!wasAuthenticated && isAuthenticated())
+		{
+			synchronized (this)
+			{
+				notifyAll();
+			}
+		}
 	}
+	
+	public boolean isAuthenticated()
+	{
+		String uid = m_cookies.get("uid");
+		if (uid == null) return false;
+		try
+		{
+			Integer.parseInt(uid);
+			return true;
+		} catch (NumberFormatException e)
+		{
+			return false;
+		}
+	}
+	
+	private String getCookiesString()
+	{
+		// touch timestamps
+		m_cookies.put("last_access", "" + (System.currentTimeMillis() / 1000));
+		m_cookies.put("last_browse", "" + (System.currentTimeMillis() / 1000));
+
+		StringBuffer b = new StringBuffer();
+		Iterator<String> keys = m_cookies.keySet().iterator();
+		while(keys.hasNext())
+		{
+			String key = keys.next();
+			String value = (String) m_cookies.get(key);
+			b.append(key + "=" + value);
+			if (keys.hasNext())
+			{
+				b.append(";");
+			}
+		}
+		return b.toString();
+	}
+	
 	
 	public static void main(String[] args) throws Exception
 	{
@@ -624,4 +616,86 @@ public class TorrentLeechRssServer
 		new TorrentLeechRssServer(props);
 	}
 	
+	@SuppressWarnings("unchecked")
+	void proxy(HttpServletRequest request, HttpServletResponse response, String target) throws IOException
+	{
+		HttpURLConnection.setFollowRedirects(false);
+		String host = "www.torrentleech.org";
+		URL url = new URL("http://"+host+"/" + target);
+		Log.info("proxying to " + url);
+		HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+		Enumeration headers = request.getHeaderNames();
+		while(headers.hasMoreElements())
+		{
+			String k = (String) headers.nextElement();
+			String v = request.getHeader(k);
+			if (k.equals("Host"))
+			{
+				v = host;
+			}
+			if (k.equals("Referer"))
+			{
+				v = "http://" + host + v.substring(v.indexOf("/proxy") + "/proxy".length());
+			}
+			
+//			Log.info("request header: " + k + "=" + v);
+			conn.addRequestProperty(k, v);
+		}
+		
+		if (request.getMethod() == "POST")
+		{
+			conn.setDoOutput(true);
+			conn.setRequestMethod("POST");
+			OutputStream out = conn.getOutputStream();
+	        BufferedInputStream bin = new BufferedInputStream(request.getInputStream(), 4096);
+	        byte buff[] = new byte[4096];
+	        int len;
+	        StringBuffer sb = new StringBuffer();
+	        while((len = bin.read(buff)) != -1) 
+	        {
+	        	out.write(buff, 0, len);
+	        	sb.append(new String(buff, 0, len));
+	        }
+//	        Log.info("Sent " + sb);
+		}
+		
+		int code = conn.getResponseCode();
+		InputStream in = conn.getInputStream();
+		
+		List<String> cookies = (List<String>) conn.getHeaderFields().get("Set-Cookie");
+		handleCookies(cookies);
+		
+		if (!isAuthenticated())
+		{
+			response.setStatus(code);
+			int i = 1;
+			while(true)
+			{
+				String k = conn.getHeaderFieldKey(i);
+				if (k == null) break;
+				String v = conn.getHeaderField(i);
+				i++;
+				response.setHeader(k, v);
+//			Log.info("response header: " + k + "=" + v);
+			}
+			
+			
+			OutputStream out = response.getOutputStream();
+			BufferedInputStream bin = new BufferedInputStream(in, 4096);
+			byte buff[] = new byte[4096];
+			int len;
+			StringBuffer sb = new StringBuffer();
+			while((len = bin.read(buff)) != -1) 
+			{
+				out.write(buff, 0, len);
+				sb.append(new String(buff, 0, len));
+			}
+//        Log.info("Received " + sb);
+		}
+		else
+		{
+			Log.info("Authenticated");
+			response.sendRedirect("/");
+		}
+	}	
 }

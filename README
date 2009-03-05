@@ -7,8 +7,9 @@ You need Java to run TorrentLeech2RSS, tested with Java 1.5
 == Installation ==
 Extract the zip somewhere
 Rename sample-conf.properties to conf.properties, and open it with a text editor.
-1. Fill in your uid and pass the configuration file (to obtain them use Firefox developer toolbar, log into TorrentLeech and view cookies. copy uid and pass)
-2. Edit update_categories to contain a comma seperated list of torrentleech category ids.
+1. Edit update_categories to contain a comma seperated list of torrentleech category ids.
+2. Access RSS feed using browser (by default http://localhost:8080) to login into torrentleech.
+
 See the TorrentLeech site for a full list of ids, but here are a few common ones:
 
 	Games/PC ISO 	: 4
