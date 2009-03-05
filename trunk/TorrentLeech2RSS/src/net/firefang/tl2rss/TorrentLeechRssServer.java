@@ -327,8 +327,18 @@ public class TorrentLeechRssServer
 			URL url = new URL(u);
 			Log.warn("Updating torrents : " + url);
 			URLConnection conn = (HttpURLConnection) url.openConnection();
-			conn.setRequestProperty("Cookie", session.getCookiesString());
-			processTorrentsStream(conn.getInputStream());
+            conn.setConnectTimeout(30000);
+            conn.setReadTimeout(30000);
+			InputStream in = conn.getInputStream();
+			try
+			{
+				conn.setRequestProperty("Cookie", session.getCookiesString());
+				processTorrentsStream(in);
+			}
+			finally
+			{
+				in.close();
+			}
 		}
 	}
 	
