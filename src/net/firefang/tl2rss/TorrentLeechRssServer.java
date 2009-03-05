@@ -329,10 +329,10 @@ public class TorrentLeechRssServer
 			URLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setConnectTimeout(30000);
             conn.setReadTimeout(30000);
+			conn.setRequestProperty("Cookie", session.getCookiesString());
 			InputStream in = conn.getInputStream();
 			try
 			{
-				conn.setRequestProperty("Cookie", session.getCookiesString());
 				processTorrentsStream(in);
 			}
 			finally
