@@ -1,6 +1,8 @@
 package net.firefang.tl2rss;
 
 import java.io.BufferedInputStream;
+import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -60,6 +62,7 @@ import com.sun.syndication.feed.synd.SyndFeedImpl;
 import com.sun.syndication.io.FeedException;
 import com.sun.syndication.io.SyndFeedOutput;
 import com.sun.syndication.io.impl.DateParser;
+import com.sun.xml.internal.ws.message.ByteArrayAttachment;
 
 /**
  * @author omry
@@ -159,6 +162,7 @@ public class TorrentLeechRssServer
 				"\t<body>\n" +
 				"Please log into TorrentLeech<br/>" +
 				"Note: TL2RSS does not do anything with your username and password except sending them to TorrentLeech. however, cookies are stored in cookies.txt to avoid further logins<br/>\n" +
+				"After you login, you should be able to use your TL2RSS URL in your RSS reader<br/>\n" +
 				"\t\t<iframe width='100%' height='100%' src='http://localhost:8080/proxy/'></iframe>\n" +
 				"\t</body>\n" +
 				"</html>\n";
@@ -631,13 +635,26 @@ public class TorrentLeechRssServer
 	
 	public static void main(String[] args) throws Exception
 	{
+		Properties props = new Properties();
 		File file = new File("conf.properties");
 		if (!file.exists())
 		{
-			System.err.println("Missing conf.properties, copy rename sample-conf.properties and fill in the missing bits");
-			return;
+			File f = new File("sample-conf.properties");
+			byte fdata[] = new byte[(int)f.length()];
+			DataInputStream in = new DataInputStream(new FileInputStream(f));
+			in.readFully(fdata);
+			props.load(new ByteArrayInputStream(fdata));
+			FileOutputStream fout = new FileOutputStream("conf.properties");
+			try
+			{
+				fout.write(fdata);
+			}
+			finally
+			{
+				fout.close();
+			}
+			Log.info("Created a new conf.propeties file");
 		}
-		Properties props = new Properties();
 		props.load(new FileInputStream(file));
 		new TorrentLeechRssServer(props);
 	}
