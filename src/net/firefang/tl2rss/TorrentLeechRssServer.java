@@ -50,8 +50,6 @@ import org.htmlparser.tags.LinkTag;
 import org.htmlparser.tags.TableColumn;
 import org.htmlparser.util.NodeList;
 import org.htmlparser.util.ParserException;
-import org.mortbay.component.AbstractLifeCycle;
-import org.mortbay.component.LifeCycle;
 import org.mortbay.jetty.Request;
 import org.mortbay.jetty.Server;
 import org.mortbay.jetty.handler.DefaultHandler;
