@@ -193,6 +193,7 @@ public class TorrentLeechRssServer
 				String key =(String)keys.nextElement();
 				String value = props.getProperty(key);
 				m_cookies.put(key, value);
+				Log.info("Loaded cookie " + key + "=" + value);
 			}
 		} catch (IOException e)
 		{
@@ -601,6 +602,7 @@ public class TorrentLeechRssServer
 		
 		if (!wasAuthenticated && isAuthenticated())
 		{
+			Log.info("Authenticated, updateing torrents");
 			updateTorrents();
 			synchronized (this)
 			{
