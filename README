@@ -27,5 +27,3 @@ to run it, use the command:
 java -jar tl2rss.jar
 
 Or double click on the jar file. (See the processes list to be sure it's running if you start it this way).
-
-If you intend to access the feed from a different machine, change localhost in the file to the ip/hostname of the machine the TL2RSS is running on.

@@ -11,6 +11,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
+import java.net.InetAddress;
 import java.net.URL;
 import java.net.URLConnection;
 import java.text.ParseException;
@@ -86,10 +87,10 @@ public class TorrentLeechRssServer
 		loadCookies();
 		
 		m_updateCategories = props.getProperty("update_categories", "7");
-		m_host = props.getProperty("host", "localhost");
+		m_host = props.getProperty("host", InetAddress.getLocalHost().getHostName());
 		m_port = Integer.parseInt(props.getProperty("port", "8080"));
 		m_torrentTimeoutDays = Integer.parseInt(props.getProperty("torrent_timeout_days", "7"));
-		
+		Log.info("Running from " + m_host + ":" + m_port);
 		
 		m_updateInterval = Integer.parseInt(props.getProperty("update_interval", "25"));
 		
@@ -170,7 +171,7 @@ public class TorrentLeechRssServer
 				"Please log into TorrentLeech<br/>" +
 				"Note: TL2RSS does not do anything with your username and password except sending them to TorrentLeech. however, cookies are stored in cookies.txt to avoid further logins<br/>\n" +
 				"After you login, you should be able to use your TL2RSS URL in your RSS reader<br/>\n" +
-				"\t\t<iframe width='100%' height='100%' src='http://localhost:8080/proxy/'></iframe>\n" +
+				"\t\t<iframe width='100%' height='100%' src='http://"+m_host +":"+m_port+"/proxy/'></iframe>\n" +
 				"\t</body>\n" +
 				"</html>\n";
 		response.setContentType("text/html");
