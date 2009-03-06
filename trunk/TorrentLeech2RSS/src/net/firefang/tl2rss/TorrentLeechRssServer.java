@@ -50,6 +50,8 @@ import org.htmlparser.tags.LinkTag;
 import org.htmlparser.tags.TableColumn;
 import org.htmlparser.util.NodeList;
 import org.htmlparser.util.ParserException;
+import org.mortbay.component.AbstractLifeCycle;
+import org.mortbay.component.LifeCycle;
 import org.mortbay.jetty.Request;
 import org.mortbay.jetty.Server;
 import org.mortbay.jetty.handler.DefaultHandler;
@@ -62,7 +64,6 @@ import com.sun.syndication.feed.synd.SyndFeedImpl;
 import com.sun.syndication.io.FeedException;
 import com.sun.syndication.io.SyndFeedOutput;
 import com.sun.syndication.io.impl.DateParser;
-import com.sun.xml.internal.ws.message.ByteArrayAttachment;
 
 /**
  * @author omry
@@ -149,7 +150,15 @@ public class TorrentLeechRssServer
 		        ((Request)request).setHandled(true);
 			}
 		});
-		server.start();
+		
+		try
+		{
+			server.start();
+		} catch (Exception e)
+		{
+			Log.warn(e);
+			System.exit(1);
+		}
 	}
 	
 	protected void tl(HttpServletRequest request, HttpServletResponse response) throws IOException
@@ -228,8 +237,9 @@ public class TorrentLeechRssServer
 
 	private void startCleanupThread()
 	{
-		new Thread()
+		Thread t = new Thread("Cleanup thread")
 		{
+			
 			public void run()
 			{
 				while(true)
@@ -253,12 +263,14 @@ public class TorrentLeechRssServer
 					}
 				}
 			}
-		}.start();
+		};
+		t.setDaemon(true);
+		t.start();
 	}
 
 	private void startUpdateThread() throws IOException
 	{
-		new Thread("Torrents update thread")
+		Thread t = new Thread("Torrents update thread")
 		{
 			public void run()
 			{
@@ -294,7 +306,9 @@ public class TorrentLeechRssServer
 					}
 				}
 			}
-		}.start();
+		};
+		t.setDaemon(true);
+		t.start();
 	}
 	
 	long m_lastUpdate;
