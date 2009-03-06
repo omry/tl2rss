@@ -1,5 +1,6 @@
 Version 1.2
 05/03/2009 : No longer requires cookies in configuration file, now displays a torrentleech login screen if needed when accessed through a browser.
+05/03/2009 : No longer required renaming the configuration file on first use. it now just copies  the sample configuration file automatically.
 
 Version 1.1.2
 05/03/2009: Fixed download links to no longer contain session id and uid.

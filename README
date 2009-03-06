@@ -6,17 +6,19 @@ You need Java to run TorrentLeech2RSS, tested with Java 1.5
 
 == Installation ==
 Extract the zip somewhere
-Rename sample-conf.properties to conf.properties, and open it with a text editor.
-1. Edit update_categories to contain a comma seperated list of torrentleech category ids.
-2. Access RSS feed using browser (by default http://localhost:8080) to login into torrentleech.
+Access RSS feed using browser (by default http://localhost:8080) to login into torrentleech.
+Then use the url in your RSS reader.
+
+You can change scanned categories by editing conf.properties (created after the first run) and changing the value for update_categories.
 
 See the TorrentLeech site for a full list of ids, but here are a few common ones:
-
 	Games/PC ISO 	: 4
 	Episodes/TV 	: 7
 	Movies/XviD 	: 19
-	Movies/HD-XviD 	: 35
+	Movies/HD-x264 	: 35
 	
+For example, to have a feed of XVid and x264 movies use
+update_categories=19,35
 
 == Running ==
 tl2rss need to run constantly.
@@ -25,9 +27,5 @@ to run it, use the command:
 java -jar tl2rss.jar
 
 Or double click on the jar file. (See the processes list to be sure it's running if you start it this way).
-
-== RSS Feed ==
-Provided that you did not change the default port (8080), your rss feed is:
-http://localhost:8080/
 
 If you intend to access the feed from a different machine, change localhost in the file to the ip/hostname of the machine the TL2RSS is running on.
