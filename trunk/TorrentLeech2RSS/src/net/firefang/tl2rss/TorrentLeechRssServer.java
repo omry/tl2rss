@@ -85,14 +85,6 @@ public class TorrentLeechRssServer
 	
 	public TorrentLeechRssServer(Properties props) throws Exception
 	{
-		Runtime.getRuntime().addShutdownHook(new Thread()
-		{
-			public void run()
-			{
-				saveCookies();
-			}
-		});
-		
 		loadCookies();
 		
 		m_updateCategories = props.getProperty("update_categories", "7");
@@ -102,8 +94,6 @@ public class TorrentLeechRssServer
 		
 		
 		m_updateInterval = Integer.parseInt(props.getProperty("update_interval", "25"));
-		startUpdateThread();
-		startCleanupThread();
 		
 		Server server = new Server(m_port);
 		server.setHandler(new DefaultHandler()
@@ -156,9 +146,19 @@ public class TorrentLeechRssServer
 			server.start();
 		} catch (Exception e)
 		{
-			Log.warn(e);
 			System.exit(1);
 		}
+		
+		Runtime.getRuntime().addShutdownHook(new Thread()
+		{
+			public void run()
+			{
+				saveCookies();
+			}
+		});
+		
+		startUpdateThread();
+		startCleanupThread();
 	}
 	
 	protected void tl(HttpServletRequest request, HttpServletResponse response) throws IOException
