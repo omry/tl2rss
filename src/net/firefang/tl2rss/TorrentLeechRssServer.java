@@ -2,6 +2,7 @@ package net.firefang.tl2rss;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -165,7 +166,6 @@ public class TorrentLeechRssServer
 		//String html = "<html><head><base href='http://www.torrentleech.org'/><base target='_blank'/></head><body> <frame src='http://localhost:8080/proxy/'></frame></body></html>";
 		String html = "<html>\n" +
 				"\t<head>\n" +
-				"\t\t<base href='http://www.torrentleech.org'/>\n" +
 				"\t</head>\n" +
 				"\t<body>\n" +
 				"Please log into TorrentLeech<br/>" +
@@ -579,7 +579,7 @@ public class TorrentLeechRssServer
 	}
 	
 
-	private void handleCookies(List<String> cookies) throws IOException
+	private synchronized void handleCookies(List<String> cookies) throws IOException
 	{
 		boolean wasAuthenticated = isAuthenticated();
 		for(int i=0;cookies != null && i<cookies.size();i++)
@@ -677,36 +677,64 @@ public class TorrentLeechRssServer
 	@SuppressWarnings("unchecked")
 	void proxy(HttpServletRequest request, HttpServletResponse response, String target) throws IOException
 	{
+		final boolean debug = false;
 		HttpURLConnection.setFollowRedirects(false);
-		String host = "www.torrentleech.org";
-		URL url = new URL("http://"+host+"/" + target);
-		Log.info("proxying to " + url);
+		String torrentleech = "www.torrentleech.org";
+		String host = torrentleech;
+		String referrer = null;
+		URL url;
+		if (target.startsWith("external:"))
+		{
+			url = new URL(target.substring("external:".length()) +getParameters(request) );
+			target = url.toString();
+			host = url.getHost();
+			referrer = "http://"+ torrentleech;
+		}
+		else
+		{
+			url = new URL("http://"+host+"/" + target);
+		}
+		
+		if (debug) Log.info("proxying to " + url);
 		HttpURLConnection conn = (HttpURLConnection) url.openConnection();
 		Enumeration headers = request.getHeaderNames();
 		while(headers.hasMoreElements())
 		{
 			String k = (String) headers.nextElement();
 			String v = request.getHeader(k);
+			if (k.equals("Accept-Encoding"))
+			{
+				if (debug) Log.info("Skipping "  + k + " = " + v);
+				continue; // skip
+			}
+			
 			if (k.equals("Host"))
 			{
 				v = host;
 			}
 			if (k.equals("Referer"))
 			{
-				int i = v.indexOf("/torrentleech");
-				int i2 = v.indexOf("/proxy");
-				if (i != -1)
+				if (referrer == null)
 				{
-					v = "http://" + host + v.substring(i + "/torrentleech".length());
+					int i = v.indexOf("/torrentleech");
+					int i2 = v.indexOf("/proxy");
+					if (i != -1)
+					{
+						v = "http://" + host + v.substring(i + "/torrentleech".length());
+					}
+					else
+					if (i2 != -1)
+					{
+						v = "http://" + host + "/" + v.substring(i2 + "/proxy/".length());
+					}
 				}
 				else
-				if (i2 != -1)
 				{
-					v = "http://" + host + v.substring(i2 + "/proxy/".length());
+					v = referrer;
 				}
 			}
 			
-//			Log.info("request header: " + k + "=" + v);
+			if (debug) Log.info("request header: " + k + "=" + v);
 			conn.addRequestProperty(k, v);
 		}
 		
@@ -724,7 +752,7 @@ public class TorrentLeechRssServer
 	        	out.write(buff, 0, len);
 	        	sb.append(new String(buff, 0, len));
 	        }
-//	        Log.info("Sent " + sb);
+//	        if (debug) Log.info("Sent " + sb);
 		}
 		
 		int code = conn.getResponseCode();
@@ -735,6 +763,7 @@ public class TorrentLeechRssServer
 		
 		if (!isAuthenticated())
 		{
+			Map<String, String> responsProps = new HashMap<String, String>();
 			response.setStatus(code);
 			int i = 1;
 			while(true)
@@ -743,27 +772,84 @@ public class TorrentLeechRssServer
 				if (k == null) break;
 				String v = conn.getHeaderField(i);
 				i++;
-				response.setHeader(k, v);
-//				Log.info("response header: " + k + "=" + v);
+				responsProps.put(k, v);
+				if (debug) Log.info("response header: " + k + "=" + v);
 			}
 			
-			
-			OutputStream out = response.getOutputStream();
 			BufferedInputStream bin = new BufferedInputStream(in, 4096);
-			byte buff[] = new byte[4096];
-			int len;
-			StringBuffer sb = new StringBuffer();
-			while((len = bin.read(buff)) != -1) 
+			int contentLength = conn.getContentLength();
+			byte buffer[];
+			if (contentLength != -1)
 			{
-				out.write(buff, 0, len);
-				sb.append(new String(buff, 0, len));
+				buffer = new byte[contentLength];
+				new DataInputStream(bin).readFully(buffer);
 			}
-//			Log.info("Received " + sb);
+			else
+			{
+				ByteArrayOutputStream bout = new ByteArrayOutputStream();
+				int c;
+				while((c = bin.read()) != -1) 
+				{
+					bout.write((char)c);
+				}
+				buffer = bout.toByteArray();
+			}
+			
+			String ct = responsProps.get("Content-Type");
+			boolean goodCt = (ct.startsWith("text/html") || ct.startsWith("text/javascript"));
+			byte data[] = null;
+			if (goodCt)
+			{
+				data = filterResponse(target, request, responsProps, new String(buffer)).getBytes();
+			}
+			else
+			{
+				data = buffer;
+			}
+			
+			for(String k : responsProps.keySet())
+			{
+				String v = responsProps.get(k);
+				response.setHeader(k, v);
+			}
+			response.setContentLength(data.length);
+			OutputStream out = response.getOutputStream();
+			out.write(data);
+//			if (debug) Log.info("Received " + sb);
 		}
 		else
 		{
-//			Log.info("Authenticated");
+			Log.info("Authenticated");
 			response.sendRedirect("/");
 		}
+	}
+
+	@SuppressWarnings("unchecked")
+	private String getParameters(HttpServletRequest request)
+	{
+		String res = "";
+		Enumeration names = request.getParameterNames();
+		while(names.hasMoreElements())
+		{
+			String name = (String) names.nextElement();
+			String value = request.getParameter(name);
+			if (res != "")
+			{
+				res += "&"; 
+			}
+			res += name + "=" + value;
+		}
+		return res != ""  ? "?" + res : "";
+	}
+
+	private String filterResponse(String target, HttpServletRequest request,
+			Map<String, String> responseProps, String responseText) throws UnsupportedEncodingException
+	{
+		if (target.equals("login.php") || target.startsWith("http://api.recaptcha.net"))
+		{
+			String responseText2= responseText.replaceAll("api.recaptcha.net", m_host + ":" + m_port + "/proxy/external:http://api.recaptcha.net");
+			responseText = responseText2;
+		}
+		return responseText;
 	}	
 }
