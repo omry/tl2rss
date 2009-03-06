@@ -128,8 +128,7 @@ public class TorrentLeechRssServer
 				{
 		        	if (!isAuthenticated())
 		        	{
-	        			response.sendRedirect("proxy/login.php");
-	        			((Request)request).setHandled(true);
+		        		tl(request, response);
 		        	}
 		        	else
 		        	{
@@ -150,6 +149,23 @@ public class TorrentLeechRssServer
 		server.start();
 	}
 	
+	protected void tl(HttpServletRequest request, HttpServletResponse response) throws IOException
+	{
+		//String html = "<html><head><base href='http://www.torrentleech.org'/><base target='_blank'/></head><body> <frame src='http://localhost:8080/proxy/'></frame></body></html>";
+		String html = "<html>\n" +
+				"\t<head>\n" +
+				"\t\t<base href='http://www.torrentleech.org'/>\n" +
+				"\t</head>\n" +
+				"\t<body>\n" +
+				"Please log into TorrentLeech<br/>" +
+				"Note: TL2RSS does not do anything with your username and password except sending them to TorrentLeech. however, cookies are stored in cookies.txt to avoid further logins<br/>\n" +
+				"\t\t<iframe width='100%' height='100%' src='http://localhost:8080/proxy/'></iframe>\n" +
+				"\t</body>\n" +
+				"</html>\n";
+		response.setContentType("text/html");
+		response.getWriter().write(html);
+	}
+
 	private void loadCookies()
 	{
 		if (!new File("cookies.txt").exists()) return;
@@ -277,22 +293,24 @@ public class TorrentLeechRssServer
 		}.start();
 	}
 	
-	boolean m_firstRun = true;
+	long m_lastUpdate;
 	protected void updateTorrents() throws IOException
 	{
+		if (System.currentTimeMillis() - m_lastUpdate < (m_updateInterval-1) * 60 * 1000) return;
+		
 		StringTokenizer tok = new StringTokenizer(m_updateCategories, ", ");
 		while(tok.hasMoreElements())
 		{
 			String cat = tok.nextToken();
 			try
 			{
-				updateCategory(cat, m_firstRun);
+				updateCategory(cat, m_lastUpdate == 0);
 			} catch (ParserException e)
 			{
 				Log.warn("Error parsing html of category " + cat,e);
 			} 
 		}
-		m_firstRun = false;
+		m_lastUpdate = System.currentTimeMillis();
 	}
 
 	@SuppressWarnings("unchecked")
@@ -543,7 +561,7 @@ public class TorrentLeechRssServer
 	}
 	
 
-	private void handleCookies(List<String> cookies)
+	private void handleCookies(List<String> cookies) throws IOException
 	{
 		boolean wasAuthenticated = isAuthenticated();
 		for(int i=0;cookies != null && i<cookies.size();i++)
@@ -567,6 +585,7 @@ public class TorrentLeechRssServer
 		
 		if (!wasAuthenticated && isAuthenticated())
 		{
+			updateTorrents();
 			synchronized (this)
 			{
 				notifyAll();
@@ -642,7 +661,17 @@ public class TorrentLeechRssServer
 			}
 			if (k.equals("Referer"))
 			{
-				v = "http://" + host + v.substring(v.indexOf("/proxy") + "/proxy".length());
+				int i = v.indexOf("/torrentleech");
+				int i2 = v.indexOf("/proxy");
+				if (i != -1)
+				{
+					v = "http://" + host + v.substring(i + "/torrentleech".length());
+				}
+				else
+				if (i2 != -1)
+				{
+					v = "http://" + host + v.substring(i2 + "/proxy/".length());
+				}
 			}
 			
 //			Log.info("request header: " + k + "=" + v);
@@ -683,7 +712,7 @@ public class TorrentLeechRssServer
 				String v = conn.getHeaderField(i);
 				i++;
 				response.setHeader(k, v);
-//			Log.info("response header: " + k + "=" + v);
+//				Log.info("response header: " + k + "=" + v);
 			}
 			
 			
@@ -697,11 +726,11 @@ public class TorrentLeechRssServer
 				out.write(buff, 0, len);
 				sb.append(new String(buff, 0, len));
 			}
-//        Log.info("Received " + sb);
+//			Log.info("Received " + sb);
 		}
 		else
 		{
-			Log.info("Authenticated");
+//			Log.info("Authenticated");
 			response.sendRedirect("/");
 		}
 	}	
