@@ -245,13 +245,16 @@ public class TorrentLeechRssServer
 				while(true)
 				{
 					long now = System.currentTimeMillis();
-					for (String id : m_torrents.keySet())
+					synchronized (m_torrents)
 					{
-						Torrent t = m_torrents.get(id);
-						if (now - t.creationTime > (m_torrentTimeoutDays * 24 * 60 * 60 * 1000));
+						for (String id : m_torrents.keySet())
 						{
-							Log.info("Torrent expired, removing " + t.name);
-							m_torrents.remove(id);
+							Torrent t = m_torrents.get(id);
+							if (now - t.creationTime > (m_torrentTimeoutDays * 24 * 60 * 60 * 1000));
+							{
+								Log.info("Torrent expired, removing " + t.name);
+								m_torrents.remove(id);
+							}
 						}
 					}
 					
@@ -398,12 +401,15 @@ public class TorrentLeechRssServer
 
 	private Torrent getTorrent(String id)
 	{
-		if (!m_torrents.containsKey(id))
+		synchronized (m_torrents)
 		{
-			m_torrents.put(id, new Torrent(id));
+			if (!m_torrents.containsKey(id))
+			{
+				m_torrents.put(id, new Torrent(id));
+			}
+			
+			return m_torrents.get(id);
 		}
-		
-		return (Torrent) m_torrents.get(id);
 	}
 
 	private void updateCategory(String cat, boolean firstRun) throws ParserException, IOException 
