@@ -245,16 +245,15 @@ public class TorrentLeechRssServer
 				while(true)
 				{
 					long now = System.currentTimeMillis();
-					synchronized (m_torrents)
+					Iterator<String> keys = m_torrents.keySet().iterator();
+					while(keys.hasNext())
 					{
-						for (String id : m_torrents.keySet())
+						String id = keys.next();
+						Torrent t = m_torrents.get(id);
+						if (now - t.creationTime > (m_torrentTimeoutDays * 24 * 60 * 60 * 1000));
 						{
-							Torrent t = m_torrents.get(id);
-							if (now - t.creationTime > (m_torrentTimeoutDays * 24 * 60 * 60 * 1000));
-							{
-								Log.info("Torrent expired, removing " + t.name);
-								m_torrents.remove(id);
-							}
+							Log.info("Torrent expired, removing " + t.name);
+							keys.remove();
 						}
 					}
 					
@@ -392,24 +391,14 @@ public class TorrentLeechRssServer
 	}
 
 
-	
-//	private void test() throws FileNotFoundException, ParserException, UnsupportedEncodingException
-//	{
-//		processTorrentsStream(new FileInputStream("test.html"));
-//
-//	}
-
 	private Torrent getTorrent(String id)
 	{
-		synchronized (m_torrents)
+		if (!m_torrents.containsKey(id))
 		{
-			if (!m_torrents.containsKey(id))
-			{
-				m_torrents.put(id, new Torrent(id));
-			}
-			
-			return m_torrents.get(id);
+			m_torrents.put(id, new Torrent(id));
 		}
+		
+		return m_torrents.get(id);
 	}
 
 	private void updateCategory(String cat, boolean firstRun) throws ParserException, IOException 
@@ -509,7 +498,7 @@ public class TorrentLeechRssServer
 		URL url = new URL(u);
 		URLConnection conn = (HttpURLConnection) url.openConnection();
 		conn.setRequestProperty("Cookie", getCookiesString());
-		return conn.getInputStream();
+		return new BufferedInputStream(conn.getInputStream(), 4096);
 	}
 
 	private NodeFilter getDownloadsFilter()
@@ -585,7 +574,7 @@ public class TorrentLeechRssServer
 	}
 	
 
-	private synchronized void handleCookies(List<String> cookies) throws IOException
+	private void handleCookies(List<String> cookies) throws IOException
 	{
 		boolean wasAuthenticated = isAuthenticated();
 		for(int i=0;cookies != null && i<cookies.size();i++)
