@@ -1,4 +1,7 @@
-Version 1.2
+Version 1.2.1
+11/03/2009 : Fixed a bug that caused the cleanup thread to fail, resulting in ever growing list of torrents in the rss feed.
+
+Version 1.2.0
 05/03/2009 : No longer requires cookies in configuration file, now displays a torrentleech login screen if needed when accessed through a browser.
 05/03/2009 : No longer required renaming the configuration file on first use. it now just copies  the sample configuration file automatically.
 
