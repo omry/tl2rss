@@ -37,7 +37,11 @@
     	<copy file="changelog" todir="${BUILD_DIR}/dist/"></copy>
     	<copy file="README" todir="${BUILD_DIR}/dist/"></copy>
     	<copy file="gpl-3.0.txt" todir="${BUILD_DIR}/dist/"></copy>
-    	
+    	<copy file="build.xml" todir="${BUILD_DIR}/dist/"></copy>
+    	<copy file="build.properties" todir="${BUILD_DIR}/dist/"></copy>
+
+		<copydir src="src"	dest="${BUILD_DIR}/dist/src" includes="**/*.java"/>
+
 		<jar destfile="${BUILD_DIR}/dist/tl2rss.jar" basedir="${BUILD_DIR}/bin" update="true" duplicate="fail">
 			<manifest>
 				<attribute name="Main-Class" value="net.firefang.tl2rss.TorrentLeechRssServer" />
