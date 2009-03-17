@@ -295,6 +295,7 @@ public class TorrentLeechRssServer
 						}
 						
 						updateTorrents();
+						if (!isAuthenticated()) continue;
 					} catch (IOException e1)
 					{
 						Log.info("IOException when updating torrents",e1);
@@ -317,7 +318,7 @@ public class TorrentLeechRssServer
 	protected void updateTorrents() throws IOException
 	{
 		if (System.currentTimeMillis() - m_lastUpdate < (m_updateInterval-1) * 60 * 1000) return;
-		
+
 		StringTokenizer tok = new StringTokenizer(m_updateCategories, ", ");
 		while(tok.hasMoreElements())
 		{
@@ -415,12 +416,20 @@ public class TorrentLeechRssServer
 		for(String u : urls)
 		{
 			URL url = new URL(u);
-			Log.warn("Updating torrents : " + url);
+			Log.info("Updating torrents : " + url);
 			URLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setConnectTimeout(30000);
             conn.setReadTimeout(30000);
 			conn.setRequestProperty("Cookie", getCookiesString());
 			InputStream in = conn.getInputStream();
+    	    List<String> cookies = (List<String>) conn.getHeaderFields().get("Set-Cookie");
+	        boolean authenticated = handleCookies(cookies);
+			if (!authenticated) 
+			{
+				Log.warn("No longer authenticated, aborting torrents update");
+				return;
+			}
+
 			try
 			{
 				processTorrentsStream(in);
@@ -574,7 +583,7 @@ public class TorrentLeechRssServer
 	}
 	
 
-	private void handleCookies(List<String> cookies) throws IOException
+	private boolean handleCookies(List<String> cookies) throws IOException
 	{
 		boolean wasAuthenticated = isAuthenticated();
 		for(int i=0;cookies != null && i<cookies.size();i++)
@@ -599,12 +608,14 @@ public class TorrentLeechRssServer
 		if (!wasAuthenticated && isAuthenticated())
 		{
 			Log.info("Authenticated, updateing torrents");
+			m_lastUpdate = 0;
 			updateTorrents();
 			synchronized (this)
 			{
 				notifyAll();
 			}
 		}
+		return isAuthenticated();
 	}
 	
 	public boolean isAuthenticated()
