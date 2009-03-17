@@ -1,3 +1,6 @@
+Version 1.2.2
+17/03/2009 : Fixed to properly handle session timeout. will get back to the TL login screen.
+
 Version 1.2.1
 12/03/2009 : Fixed built zip to contain source and build, so users can modify tl2rss easily.
 11/03/2009 : Fixed a bug that caused the cleanup thread to fail, resulting in ever growing list of torrents in the rss feed.
