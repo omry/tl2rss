@@ -13,6 +13,7 @@ TL2RSS will remained logged in, if you want to log out close it and then delete 
 You can change scanned categories by editing conf.properties (created after the first run) and changing the value for update_categories.
 
 See the TorrentLeech site for a full list of ids, but here are a few common ones:
+	All categories 	: 0
 	Games/PC ISO 	: 4
 	Episodes/TV 	: 7
 	Movies/XviD 	: 19
