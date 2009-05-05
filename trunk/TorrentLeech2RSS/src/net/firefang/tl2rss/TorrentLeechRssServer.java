@@ -620,16 +620,9 @@ public class TorrentLeechRssServer
 	
 	public boolean isAuthenticated()
 	{
-		String uid = m_cookies.get("uid");
-		if (uid == null) return false;
-		try
-		{
-			Integer.parseInt(uid);
-			return true;
-		} catch (NumberFormatException e)
-		{
-			return false;
-		}
+		if (m_cookies.get("uid")== null) return false;
+		if (m_cookies.get("pass")== null) return false;
+		return true;
 	}
 	
 	private String getCookiesString()
