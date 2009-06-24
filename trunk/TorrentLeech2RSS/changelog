@@ -1,3 +1,6 @@
+Versuib 1.2.3
+24/06/2009 : Fixed a NullPointerException when response does not contain Content-Type header
+
 Version 1.2.2
 17/03/2009 : Fixed to properly handle session timeout. will get back to the TL login screen.
 

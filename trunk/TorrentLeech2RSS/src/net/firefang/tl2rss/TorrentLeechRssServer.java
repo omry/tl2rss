@@ -795,7 +795,7 @@ public class TorrentLeechRssServer
 			}
 			
 			String ct = responsProps.get("Content-Type");
-			boolean goodCt = (ct.startsWith("text/html") || ct.startsWith("text/javascript"));
+			boolean goodCt = (ct != null && (ct.startsWith("text/html") || ct.startsWith("text/javascript")));
 			byte data[] = null;
 			if (goodCt)
 			{
