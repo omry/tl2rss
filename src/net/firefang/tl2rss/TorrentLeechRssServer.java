@@ -276,37 +276,44 @@ public class TorrentLeechRssServer
 		{
 			public void run()
 			{
-				while(true)
+				try
 				{
-					try
+					while(true)
 					{
-						while(!isAuthenticated())
+						try
 						{
-							synchronized (TorrentLeechRssServer.this)
+							while(!isAuthenticated())
 							{
-								try
+								synchronized (TorrentLeechRssServer.this)
 								{
-									Log.info("Waiting for authentication");
-									TorrentLeechRssServer.this.wait();
-								} catch (InterruptedException e)
-								{
+									try
+									{
+										Log.info("Waiting for authentication");
+										TorrentLeechRssServer.this.wait();
+									} catch (InterruptedException e)
+									{
+									}
 								}
 							}
+							
+							updateTorrents();
+							if (!isAuthenticated()) continue;
+						} catch (IOException e1)
+						{
+							Log.info("IOException when updating torrents",e1);
 						}
 						
-						updateTorrents();
-						if (!isAuthenticated()) continue;
-					} catch (IOException e1)
-					{
-						Log.info("IOException when updating torrents",e1);
+						try
+						{
+							Thread.sleep(m_updateInterval * 60 * 1000);
+						} catch (InterruptedException e)
+						{
+						}
 					}
-					
-					try
-					{
-						Thread.sleep(m_updateInterval * 60 * 1000);
-					} catch (InterruptedException e)
-					{
-					}
+				}
+				finally
+				{
+					Log.info("Update thread exited");
 				}
 			}
 		};
@@ -432,6 +439,7 @@ public class TorrentLeechRssServer
 
 			try
 			{
+				Log.info(m_cookies.toString());
 				processTorrentsStream(in);
 			}
 			finally
@@ -505,7 +513,9 @@ public class TorrentLeechRssServer
 	private InputStream doGet(String u) throws IOException
 	{
 		URL url = new URL(u);
-		URLConnection conn = (HttpURLConnection) url.openConnection();
+		HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+		conn.setConnectTimeout(30000);
+		conn.setReadTimeout(30000);
 		conn.setRequestProperty("Cookie", getCookiesString());
 		return new BufferedInputStream(conn.getInputStream(), 4096);
 	}
