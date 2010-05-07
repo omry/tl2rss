@@ -18,6 +18,10 @@
         </layout>
     </appender>
 
+    <logger name="org.mortbay.log">
+        <level value="warn"/>
+    </logger>
+
     <root>
         <priority value="debug" />
         <appender-ref ref="ConsoleAppender" />
