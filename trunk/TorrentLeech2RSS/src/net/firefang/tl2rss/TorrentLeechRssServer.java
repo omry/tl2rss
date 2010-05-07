@@ -6,6 +6,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -23,10 +24,12 @@ import java.util.Comparator;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.StringTokenizer;
 import java.util.Vector;
 import java.util.regex.Matcher;
@@ -36,6 +39,8 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.apache.jasper.servlet.JspServlet;
+import org.apache.log4j.xml.DOMConfigurator;
 import org.htmlparser.Node;
 import org.htmlparser.NodeFilter;
 import org.htmlparser.Parser;
@@ -55,7 +60,11 @@ import org.htmlparser.util.ParserException;
 import org.mortbay.jetty.Request;
 import org.mortbay.jetty.Server;
 import org.mortbay.jetty.handler.DefaultHandler;
+import org.mortbay.jetty.servlet.Context;
+import org.mortbay.jetty.servlet.DefaultServlet;
+import org.mortbay.jetty.servlet.ServletHolder;
 import org.mortbay.log.Log;
+import org.mortbay.resource.Resource;
 
 import com.sun.syndication.feed.synd.SyndEntry;
 import com.sun.syndication.feed.synd.SyndEntryImpl;
@@ -70,6 +79,7 @@ import com.sun.syndication.io.impl.DateParser;
  */
 public class TorrentLeechRssServer
 {
+	public static TorrentLeechRssServer instance;
 	private Map<String, Torrent> m_torrents = new HashMap<String, Torrent>();
 	
 	private String m_host;
@@ -85,6 +95,7 @@ public class TorrentLeechRssServer
 	
 	public TorrentLeechRssServer(Properties props) throws Exception
 	{
+		instance = this;
 		loadCookies();
 		
 		m_updateCategories = props.getProperty("update_categories", "7");
@@ -96,50 +107,16 @@ public class TorrentLeechRssServer
 		m_updateInterval = Integer.parseInt(props.getProperty("update_interval", "25"));
 		
 		Server server = new Server(m_port);
-		server.setHandler(new DefaultHandler()
-		{
-			public void handle(String target, HttpServletRequest request,
-					HttpServletResponse response, int dispatch) throws IOException,
-					ServletException
-			{
-		        if (target.startsWith("/proxy/"))
-		        {
-		        	proxy(request, response, target.substring("/proxy/".length()));
-		        }
-		        else
-				if (target.equals("/download"))
-				{
-			        String id = request.getParameter("id");
-			        if (id == null) throw new ServletException("Missing id parameter");
-			        Torrent t = m_torrents.get(id);
-			        InputStream in = doGet(t.downloadLink);
-			        response.setContentType("application/x-bittorrent");
-			        OutputStream out = response.getOutputStream();
-			        int c;
-			        while((c = in.read()) != -1) out.write(c);
-				}
-				else
-				{
-		        	if (!isAuthenticated())
-		        	{
-		        		tl(request, response);
-		        	}
-		        	else
-		        	{
-		        		response.setContentType("text/xml");
-		        		try
-		        		{
-		        			response.getWriter().write(getRSS());
-		        		} catch (FeedException e)
-		        		{
-		        			throw new ServletException(e);
-		        		}
-		        	}
-				}
-		        
-		        ((Request)request).setHandled(true);
-			}
-		});
+		server.setHandler(new Handler());
+		
+        server.setHandler(new Handler());
+        Context root = new Context(server, "/", Context.SESSIONS);
+        root.setBaseResource(Resource.newResource("file://" + new File("").getAbsolutePath() + "/jsp/", false));
+//        root.addServlet(new ServletHolder(new DefaultServlet()), "/");
+        root.addServlet(new ServletHolder(new DefaultServlet()), "/res/*");
+        root.addServlet(new ServletHolder(new JspServlet()), "*.jsp");
+        root.setWelcomeFiles(new String[]{"index.jsp"});
+        server.addHandler(root);
 		
 		try
 		{
@@ -161,23 +138,6 @@ public class TorrentLeechRssServer
 		startCleanupThread();
 	}
 	
-	protected void tl(HttpServletRequest request, HttpServletResponse response) throws IOException
-	{
-		//String html = "<html><head><base href='http://www.torrentleech.org'/><base target='_blank'/></head><body> <frame src='http://localhost:8080/proxy/'></frame></body></html>";
-		String html = "<html>\n" +
-				"\t<head>\n" +
-				"\t</head>\n" +
-				"\t<body>\n" +
-				"Please log into TorrentLeech<br/>" +
-				"Note: TL2RSS does not do anything with your username and password except sending them to TorrentLeech. however, cookies are stored in cookies.txt to avoid further logins<br/>\n" +
-				"After you login, you should be able to use your TL2RSS URL in your RSS reader<br/>\n" +
-				"\t\t<iframe width='100%' height='100%' src='http://"+m_host +":"+m_port+"/proxy/'></iframe>\n" +
-				"\t</body>\n" +
-				"</html>\n";
-		response.setContentType("text/html");
-		response.getWriter().write(html);
-	}
-
 	private void loadCookies()
 	{
 		if (!new File("cookies.txt").exists()) return;
@@ -272,7 +232,7 @@ public class TorrentLeechRssServer
 
 	private void startUpdateThread() throws IOException
 	{
-		Thread t = new Thread("Torrents update thread")
+		m_updateThread = new Thread("Torrents update thread")
 		{
 			public void run()
 			{
@@ -303,11 +263,14 @@ public class TorrentLeechRssServer
 							Log.info("IOException when updating torrents",e1);
 						}
 						
-						try
+						synchronized (TorrentLeechRssServer.this)
 						{
-							Thread.sleep(m_updateInterval * 60 * 1000);
-						} catch (InterruptedException e)
-						{
+							try
+							{
+								TorrentLeechRssServer.this.wait(m_updateInterval * 60 * 1000);
+							} catch (InterruptedException e)
+							{
+							}
 						}
 					}
 				}
@@ -317,19 +280,21 @@ public class TorrentLeechRssServer
 				}
 			}
 		};
-		t.setDaemon(true);
-		t.start();
+		m_updateThread.setDaemon(true);
+		m_updateThread.start();
 	}
 	
 	long m_lastUpdate;
+	private Thread m_updateThread;
 	protected void updateTorrents() throws IOException
 	{
+		Log.info("Updating torrents");
 		if (System.currentTimeMillis() - m_lastUpdate < (m_updateInterval-1) * 60 * 1000) return;
 
 		StringTokenizer tok = new StringTokenizer(m_updateCategories, ", ");
 		while(tok.hasMoreElements())
 		{
-			String cat = tok.nextToken();
+			int cat = Integer.parseInt(tok.nextToken());
 			try
 			{
 				updateCategory(cat, m_lastUpdate == 0);
@@ -342,7 +307,7 @@ public class TorrentLeechRssServer
 	}
 
 	@SuppressWarnings("unchecked")
-	public String getRSS() throws FeedException
+	public String getRSS(Set<Integer> cats) throws FeedException
 	{
 		String feedType = "rss_2.0";
 		SyndFeed feed = new SyndFeedImpl();
@@ -358,7 +323,8 @@ public class TorrentLeechRssServer
 		Vector v = new Vector();
 		for(Torrent t : m_torrents.values())
 		{
-			v.add(t);
+			if (cats == null || cats.contains(t.cat))
+				v.add(t);
 		}
 		
 		Collections.sort(v, new Comparator()
@@ -399,17 +365,17 @@ public class TorrentLeechRssServer
 	}
 
 
-	private Torrent getTorrent(String id)
+	private Torrent getTorrent(String id, int cat)
 	{
 		if (!m_torrents.containsKey(id))
 		{
-			m_torrents.put(id, new Torrent(id));
+			m_torrents.put(id, new Torrent(id, cat));
 		}
 		
 		return m_torrents.get(id);
 	}
 
-	private void updateCategory(String cat, boolean firstRun) throws ParserException, IOException 
+	private void updateCategory(int cat, boolean firstRun) throws ParserException, IOException 
 	{
 		List<String> urls = new ArrayList<String>();
 		urls.add("http://www.torrentleech.org/browse.php?cat="+cat);
@@ -440,7 +406,7 @@ public class TorrentLeechRssServer
 			try
 			{
 				Log.info(m_cookies.toString());
-				processTorrentsStream(in);
+				processTorrentsStream(cat, in);
 			}
 			finally
 			{
@@ -449,7 +415,7 @@ public class TorrentLeechRssServer
 		}
 	}
 	
-	private void processTorrentsStream(InputStream in) throws UnsupportedEncodingException, ParserException
+	private void processTorrentsStream(int cat, InputStream in) throws UnsupportedEncodingException, ParserException
 	{
 		Parser parser = new Parser(new Lexer(new Page(in, "UTF-8")), Parser.DEVNULL);
 		NodeList res = parser.extractAllNodesThatMatch(getDownloadsFilter());
@@ -476,7 +442,7 @@ public class TorrentLeechRssServer
 							if (matcher.matches())
 							{
 								String id = matcher.group(1);
-								torrent = getTorrent(id);
+								torrent = getTorrent(id, cat);
 								
 								if (href.getChildCount() > 2)
 								{
@@ -498,7 +464,7 @@ public class TorrentLeechRssServer
 								String id = matcher.group(1);
 								if (torrent == null)
 								{
-									torrent = getTorrent(id);
+									torrent = getTorrent(id, cat);
 								}
 								torrent.downloadLink = "http://www.torrentleech.org/" + link;
 							}
@@ -572,6 +538,76 @@ public class TorrentLeechRssServer
         return filter14;
 	}
 	
+	private final class Handler extends DefaultHandler
+	{
+		public void handle(String target, HttpServletRequest request,
+				HttpServletResponse response, int dispatch) throws IOException,
+				ServletException
+		{
+		    if (target.startsWith("/proxy/"))
+		    {
+		    	proxy(request, response, target.substring("/proxy/".length()));
+		    	((Request)request).setHandled(true);
+		    }
+		    else
+			if (target.equals("/download"))
+			{
+		        String id = request.getParameter("id");
+		        if (id == null) throw new ServletException("Missing id parameter");
+		        Torrent t = m_torrents.get(id);
+		        InputStream in = doGet(t.downloadLink);
+		        response.setContentType("application/x-bittorrent");
+		        OutputStream out = response.getOutputStream();
+		        int c;
+		        while((c = in.read()) != -1) out.write(c);
+		        ((Request)request).setHandled(true);
+			}
+			else
+			if (target.equals("/rss"))
+			{
+				if (isAuthenticated())
+				{
+					response.setContentType("text/xml");
+					try
+					{
+						Set<Integer> cats = null;
+						String cc = request.getParameter("cat");
+						if (cc != null)
+						{
+							cats = new HashSet<Integer>(); 
+							StringTokenizer t = new StringTokenizer(cc, ",");
+							while(t.hasMoreElements())
+								cats.add(Integer.parseInt(t.nextToken()));
+						}
+						response.getWriter().write(getRSS(cats));
+					}
+					catch (FeedException e)
+					{
+						throw new ServletException(e);
+					}
+				}
+				else
+				{
+		    		response.setContentType("text/html");
+		    		response.getWriter().write("Not authenticated, you need to <a href='/proxy/login.php'>Login</a>");
+				}
+				((Request)request).setHandled(true);
+			}
+			else
+			if (target.equals("/logout"))
+			{
+				m_cookies.clear();
+				saveCookies();
+				response.sendRedirect("index.jsp");
+				((Request)request).setHandled(true);
+			}
+			if (target.equals("/"))
+			{
+				response.sendRedirect("index.jsp");
+			}
+		}
+	}
+
 	private static class Torrent
 	{
 		String id; 
@@ -579,9 +615,11 @@ public class TorrentLeechRssServer
 		String date;
 		String downloadLink;
 		long creationTime;
+		int cat;
 		
-		public Torrent(String id)
+		public Torrent(String id, int c)
 		{
+			cat = c;
 			creationTime = System.currentTimeMillis();
 			this.id = id;
 		}
@@ -680,13 +718,14 @@ public class TorrentLeechRssServer
 			Log.info("Created a new conf.propeties file");
 		}
 		props.load(new FileInputStream(file));
+		DOMConfigurator.configure("log4j.xml");
 		new TorrentLeechRssServer(props);
 	}
 	
 	@SuppressWarnings("unchecked")
 	void proxy(HttpServletRequest request, HttpServletResponse response, String target) throws IOException
 	{
-		final boolean debug = false;
+ 		final boolean debug = true;
 		HttpURLConnection.setFollowRedirects(false);
 		String torrentleech = "www.torrentleech.org";
 		String host = torrentleech;
@@ -819,6 +858,16 @@ public class TorrentLeechRssServer
 			for(String k : responsProps.keySet())
 			{
 				String v = responsProps.get(k);
+				if (k.equalsIgnoreCase("Location")) // http redirect, proxify
+				{
+					if (v.startsWith("http://www.torrentleech.org/"))
+					{
+						String path = v.substring("http://www.torrentleech.org/".length());
+						v = "http://"+ m_host + ":" + m_port + "/proxy/"+path;
+					}
+					else
+						v = "http://"+ m_host + ":" + m_port + "/proxy/external:" + v;
+				}
 				response.setHeader(k, v);
 			}
 			response.setContentLength(data.length);
@@ -854,11 +903,46 @@ public class TorrentLeechRssServer
 	private String filterResponse(String target, HttpServletRequest request,
 			Map<String, String> responseProps, String responseText) throws UnsupportedEncodingException
 	{
-		if (target.equals("login.php") || target.startsWith("http://api.recaptcha.net"))
+		if (target.equals("login.php") || target.startsWith("http://api.recaptcha.net") || target.startsWith("http://www.google.com/recaptcha/api"))
 		{
 			String responseText2= responseText.replaceAll("api.recaptcha.net", m_host + ":" + m_port + "/proxy/external:http://api.recaptcha.net");
+			responseText2= responseText2.replaceAll("www.google.com/recaptcha/api", m_host + ":" + m_port + "/proxy/external:http://www.google.com/recaptcha/api");
 			responseText = responseText2;
 		}
 		return responseText;
-	}	
+	}
+	
+	public void setUpdateCategories(String s) throws FileNotFoundException, IOException
+	{
+		Log.info("New update categories : " + s);
+		m_updateCategories = s;
+		Iterator<String> keys = m_torrents.keySet().iterator();
+		while(keys.hasNext())
+		{
+			String id = keys.next();
+			Torrent t = m_torrents.get(id);
+			if (!categoryActive(t.cat))
+				keys.remove();
+		}
+		
+		m_lastUpdate = 0;
+		synchronized (TorrentLeechRssServer.this)
+		{
+			TorrentLeechRssServer.this.notifyAll();
+		}
+		saveOptions();
+	}
+	
+	public void saveOptions() throws IOException
+	{
+		Properties props = new Properties();
+		File file = new File("conf.properties");
+		props.load(new FileInputStream(file));
+		props.put("update_categories", m_updateCategories);
+	}
+	
+	public boolean categoryActive(int id)
+	{
+		return m_updateCategories.contains(""+id);
+	}
 }

@@ -24,6 +24,12 @@
     		<classpath path="lib/jetty-util-6.1.6.jar"/>
     		<classpath path="lib/rome-0.9.jar"/>
     		<classpath path="lib/servlet-api-2.5-6.1.6.jar"/>
+			<classpath path="lib/jsp-api-2.1.jar"/>
+    		<classpath path="lib/ant-1.6.5.jar"/>
+    		<classpath path="lib/jsp-2.1.jar"/>
+    		<classpath path="lib/log4j-1.2.15.jar"/>
+    		<classpath path="lib/slf4j-api-1.5.2.jar"/>
+    		<classpath path="lib/slf4j-log4j12-1.5.2.jar"/>
     		<classpath path="lib/jdom-1.0.jar"/>
     	</javac>
     	
@@ -38,14 +44,16 @@
     	<copy file="README" todir="${BUILD_DIR}/dist/"></copy>
     	<copy file="gpl-3.0.txt" todir="${BUILD_DIR}/dist/"></copy>
     	<copy file="build.xml" todir="${BUILD_DIR}/dist/"></copy>
+    	<copy file="log4j.xml" todir="${BUILD_DIR}/dist/"></copy>
     	<copy file="build.properties" todir="${BUILD_DIR}/dist/"></copy>
+    	<copydir src="jsp" dest="${BUILD_DIR}/dist/jsp"></copydir>
 
 		<copydir src="src"	dest="${BUILD_DIR}/dist/src" includes="**/*.java"/>
 
 		<jar destfile="${BUILD_DIR}/dist/tl2rss.jar" basedir="${BUILD_DIR}/bin" update="true" duplicate="fail">
 			<manifest>
 				<attribute name="Main-Class" value="net.firefang.tl2rss.TorrentLeechRssServer" />
-				<attribute name="Class-Path" value="lib/htmlparser.jar lib/jetty-6.1.6.jar lib/jetty-util-6.1.6.jar lib/rome-0.9.jar lib/servlet-api-2.5-6.1.6.jar lib/jdom-1.0.jar" />
+				<attribute name="Class-Path" value="lib/htmlparser.jar lib/jetty-6.1.6.jar lib/jetty-util-6.1.6.jar lib/rome-0.9.jar lib/servlet-api-2.5-6.1.6.jar  lib/ant-1.6.5.jar lib/jsp-2.1.jar lib/log4j-1.2.15.jar lib/slf4j-api-1.5.2.jar lib/jdom-1.0.jar lib/slf4j-log4j12-1.5.2.jar lib/jsp-api-2.1.jar" />
 			</manifest>
 		</jar>
     	
