@@ -1,4 +1,10 @@
-Versuib 1.2.4
+Version 2.0
+07/05/2010 : Fixed Recaptch "invalid referred' error.
+07/05/2010 : Added a configuration screen to control which categories are indexed
+07/05/2010 : Changed rss feel url from http://localhost:8080 to http://localhost:8080/rss
+07/05/2010 : Added supper for category based filter : http://localhost:8080/rss?cat=7,8 will show only categories 7 and 8 (if they are checked in the config screen)
+
+Version 1.2.4
 24/06/2009 : Fixed a NullPointerException when response does not contain Content-Type header
 
 Version 1.2.3

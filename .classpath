@@ -8,5 +8,11 @@
 	<classpathentry kind="lib" path="lib/rome-0.9.jar" sourcepath="lib/rome-0.9-src.zip"/>
 	<classpathentry kind="lib" path="lib/servlet-api-2.5-6.1.6.jar" sourcepath="lib/servlet-api-2.5-6.1.6-src.zip"/>
 	<classpathentry kind="lib" path="lib/jdom-1.0.jar"/>
+	<classpathentry kind="lib" path="lib/log4j-1.2.15.jar"/>
+	<classpathentry kind="lib" path="lib/slf4j-api-1.5.2.jar"/>
+	<classpathentry kind="lib" path="lib/slf4j-log4j12-1.5.2.jar"/>
+	<classpathentry kind="lib" path="lib/jsp-2.1.jar" sourcepath="lib/jsp-2.1-6.1.11-sources.jar"/>
+	<classpathentry kind="lib" path="lib/jsp-api-2.1.jar"/>
+	<classpathentry kind="lib" path="lib/ant-1.6.5.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
