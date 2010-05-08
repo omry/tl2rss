@@ -109,8 +109,6 @@ public class TorrentLeechRssServer
 		
 		Server server = new Server(m_port);
 		server.setHandler(new Handler());
-		
-        server.setHandler(new Handler());
         Context root = new Context(server, "/", Context.SESSIONS);
         root.setBaseResource(Resource.newResource("file://" + new File("").getAbsolutePath() + "/jsp/", false));
 //        root.addServlet(new ServletHolder(new DefaultServlet()), "/");
@@ -605,6 +603,7 @@ public class TorrentLeechRssServer
 			if (target.equals("/"))
 			{
 				response.sendRedirect("index.jsp");
+				((Request)request).setHandled(true);
 			}
 		}
 	}
@@ -727,7 +726,7 @@ public class TorrentLeechRssServer
 	@SuppressWarnings("unchecked")
 	void proxy(HttpServletRequest request, HttpServletResponse response, String target) throws IOException
 	{
- 		final boolean debug = true;
+ 		final boolean debug = false;
 		HttpURLConnection.setFollowRedirects(false);
 		String torrentleech = "www.torrentleech.org";
 		String host = torrentleech;
