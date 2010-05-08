@@ -22,6 +22,14 @@
         <level value="warn"/>
     </logger>
 
+    <logger name="org.apache.jasper.servlet.JspServlet">
+        <level value="warn"/>
+    </logger>
+
+    <logger name="org.apache.jasper.compiler">
+        <level value="warn"/>
+	</logger>
+	
     <root>
         <priority value="debug" />
         <appender-ref ref="ConsoleAppender" />
