@@ -40,6 +40,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.apache.jasper.servlet.JspServlet;
+import org.apache.log4j.Logger;
 import org.apache.log4j.xml.DOMConfigurator;
 import org.htmlparser.Node;
 import org.htmlparser.NodeFilter;
@@ -63,7 +64,6 @@ import org.mortbay.jetty.handler.DefaultHandler;
 import org.mortbay.jetty.servlet.Context;
 import org.mortbay.jetty.servlet.DefaultServlet;
 import org.mortbay.jetty.servlet.ServletHolder;
-import org.mortbay.log.Log;
 import org.mortbay.resource.Resource;
 
 import com.sun.syndication.feed.synd.SyndEntry;
@@ -79,6 +79,7 @@ import com.sun.syndication.io.impl.DateParser;
  */
 public class TorrentLeechRssServer
 {
+	private static Logger logger;
 	public static TorrentLeechRssServer instance;
 	private Map<String, Torrent> m_torrents = new HashMap<String, Torrent>();
 	
@@ -102,7 +103,7 @@ public class TorrentLeechRssServer
 		m_host = props.getProperty("host", InetAddress.getLocalHost().getHostName());
 		m_port = Integer.parseInt(props.getProperty("port", "8080"));
 		m_torrentTimeoutDays = Integer.parseInt(props.getProperty("torrent_timeout_days", "7"));
-		Log.info("Running from " + m_host + ":" + m_port);
+		logger.info("Running from " + m_host + ":" + m_port);
 		
 		m_updateInterval = Integer.parseInt(props.getProperty("update_interval", "25"));
 		
@@ -154,11 +155,11 @@ public class TorrentLeechRssServer
 				String key =(String)keys.nextElement();
 				String value = props.getProperty(key);
 				m_cookies.put(key, value);
-				Log.info("Loaded cookie " + key + "=" + value);
+				logger.info("Loaded cookie " + key + "=" + value);
 			}
 		} catch (IOException e)
 		{
-			Log.warn(e);
+			logger.warn(e);
 		}
 		finally
 		{
@@ -191,7 +192,7 @@ public class TorrentLeechRssServer
 		} 
 		catch (IOException e)
 		{
-			Log.warn(e);
+			logger.warn(e);
 		}
 	}
 
@@ -212,7 +213,7 @@ public class TorrentLeechRssServer
 						Torrent t = m_torrents.get(id);
 						if (now - t.creationTime > (m_torrentTimeoutDays * 24 * 60 * 60 * 1000));
 						{
-							Log.info("Torrent expired, removing " + t.name);
+							logger.info("Torrent expired, removing " + t.name);
 							keys.remove();
 						}
 					}
@@ -248,7 +249,7 @@ public class TorrentLeechRssServer
 								{
 									try
 									{
-										Log.info("Waiting for authentication");
+										logger.info("Waiting for authentication");
 										TorrentLeechRssServer.this.wait();
 									} catch (InterruptedException e)
 									{
@@ -260,7 +261,7 @@ public class TorrentLeechRssServer
 							if (!isAuthenticated()) continue;
 						} catch (IOException e1)
 						{
-							Log.info("IOException when updating torrents",e1);
+							logger.info("IOException when updating torrents",e1);
 						}
 						
 						synchronized (TorrentLeechRssServer.this)
@@ -276,7 +277,7 @@ public class TorrentLeechRssServer
 				}
 				finally
 				{
-					Log.info("Update thread exited");
+					logger.info("Update thread exited");
 				}
 			}
 		};
@@ -288,7 +289,7 @@ public class TorrentLeechRssServer
 	private Thread m_updateThread;
 	protected void updateTorrents() throws IOException
 	{
-		Log.info("Updating torrents");
+		logger.info("Updating torrents");
 		if (System.currentTimeMillis() - m_lastUpdate < (m_updateInterval-1) * 60 * 1000) return;
 
 		StringTokenizer tok = new StringTokenizer(m_updateCategories, ", ");
@@ -300,7 +301,7 @@ public class TorrentLeechRssServer
 				updateCategory(cat, m_lastUpdate == 0);
 			} catch (ParserException e)
 			{
-				Log.warn("Error parsing html of category " + cat,e);
+				logger.warn("Error parsing html of category " + cat,e);
 			} 
 		}
 		m_lastUpdate = System.currentTimeMillis();
@@ -389,7 +390,7 @@ public class TorrentLeechRssServer
 		for(String u : urls)
 		{
 			URL url = new URL(u);
-			Log.info("Updating torrents : " + url);
+			logger.info("Updating torrents : " + url);
 			URLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setConnectTimeout(30000);
             conn.setReadTimeout(30000);
@@ -399,13 +400,13 @@ public class TorrentLeechRssServer
 	        boolean authenticated = handleCookies(cookies);
 			if (!authenticated) 
 			{
-				Log.warn("No longer authenticated, aborting torrents update");
+				logger.warn("No longer authenticated, aborting torrents update");
 				return;
 			}
 
 			try
 			{
-				Log.info(m_cookies.toString());
+				logger.info(m_cookies.toString());
 				processTorrentsStream(cat, in);
 			}
 			finally
@@ -655,7 +656,7 @@ public class TorrentLeechRssServer
 		
 		if (!wasAuthenticated && isAuthenticated())
 		{
-			Log.info("Authenticated, updateing torrents");
+			logger.info("Authenticated, updateing torrents");
 			m_lastUpdate = 0;
 			updateTorrents();
 			synchronized (this)
@@ -697,6 +698,8 @@ public class TorrentLeechRssServer
 	
 	public static void main(String[] args) throws Exception
 	{
+		DOMConfigurator.configure("log4j.xml");
+		logger = Logger.getLogger(TorrentLeechRssServer.class);
 		Properties props = new Properties();
 		File file = new File("conf.properties");
 		if (!file.exists())
@@ -715,10 +718,9 @@ public class TorrentLeechRssServer
 			{
 				fout.close();
 			}
-			Log.info("Created a new conf.propeties file");
+			logger.info("Created a new conf.propeties file");
 		}
 		props.load(new FileInputStream(file));
-		DOMConfigurator.configure("log4j.xml");
 		new TorrentLeechRssServer(props);
 	}
 	
@@ -743,7 +745,7 @@ public class TorrentLeechRssServer
 			url = new URL("http://"+host+"/" + target);
 		}
 		
-		if (debug) Log.info("proxying to " + url);
+		if (debug) logger.info("proxying to " + url);
 		HttpURLConnection conn = (HttpURLConnection) url.openConnection();
 		Enumeration headers = request.getHeaderNames();
 		while(headers.hasMoreElements())
@@ -752,7 +754,7 @@ public class TorrentLeechRssServer
 			String v = request.getHeader(k);
 			if (k.equals("Accept-Encoding"))
 			{
-				if (debug) Log.info("Skipping "  + k + " = " + v);
+				if (debug) logger.info("Skipping "  + k + " = " + v);
 				continue; // skip
 			}
 			
@@ -782,7 +784,7 @@ public class TorrentLeechRssServer
 				}
 			}
 			
-			if (debug) Log.info("request header: " + k + "=" + v);
+			if (debug) logger.info("request header: " + k + "=" + v);
 			conn.addRequestProperty(k, v);
 		}
 		
@@ -800,7 +802,7 @@ public class TorrentLeechRssServer
 	        	out.write(buff, 0, len);
 	        	sb.append(new String(buff, 0, len));
 	        }
-//	        if (debug) Log.info("Sent " + sb);
+//	        if (debug) logger.info("Sent " + sb);
 		}
 		
 		int code = conn.getResponseCode();
@@ -821,7 +823,7 @@ public class TorrentLeechRssServer
 				String v = conn.getHeaderField(i);
 				i++;
 				responsProps.put(k, v);
-				if (debug) Log.info("response header: " + k + "=" + v);
+				if (debug) logger.info("response header: " + k + "=" + v);
 			}
 			
 			BufferedInputStream bin = new BufferedInputStream(in, 4096);
@@ -873,11 +875,11 @@ public class TorrentLeechRssServer
 			response.setContentLength(data.length);
 			OutputStream out = response.getOutputStream();
 			out.write(data);
-//			if (debug) Log.info("Received " + sb);
+//			if (debug) logger.info("Received " + sb);
 		}
 		else
 		{
-			Log.info("Authenticated");
+			logger.info("Authenticated");
 			response.sendRedirect("/");
 		}
 	}
@@ -914,7 +916,7 @@ public class TorrentLeechRssServer
 	
 	public void setUpdateCategories(String s) throws FileNotFoundException, IOException
 	{
-		Log.info("New update categories : " + s);
+		logger.info("New update categories : " + s);
 		m_updateCategories = s;
 		Iterator<String> keys = m_torrents.keySet().iterator();
 		while(keys.hasNext())
