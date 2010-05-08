@@ -404,7 +404,6 @@ public class TorrentLeechRssServer
 
 			try
 			{
-				logger.info(m_cookies.toString());
 				processTorrentsStream(cat, in);
 			}
 			finally

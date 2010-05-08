@@ -14,10 +14,11 @@
 	else
 	{
 %>
-<a href="/rss">RSS feed</><br/>
 <a href="/logout">Log out of TorrentLeedch</></a><br/>
 <%
 	}
 	%>
+	<br/>
+	<a href="/rss">RSS feed</><br/>
 	<a href="/config.jsp">Configure TL2RSS</></a><br/>
 </html>
