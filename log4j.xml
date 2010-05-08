@@ -19,7 +19,7 @@
     </appender>
 
     <logger name="org.mortbay.log">
-        <level value="debug"/>
+        <level value="info"/>
     </logger>
 
     <logger name="org.apache.jasper.servlet.JspServlet">
