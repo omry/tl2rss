@@ -353,7 +353,7 @@ public class TorrentLeechRssServer
 			
 			SyndEntry entry = new SyndEntryImpl();
 			entry.setTitle(t.name);
-			entry.setLink(baseUrl + "/download?id=" + t.id);
+			entry.setLink(baseUrl + "/download/" +  t.id + ".torrent");
 			entry.setPublishedDate(DateParser.parseDate(t.date));
 			entries.add(entry);
 		}
@@ -548,16 +548,23 @@ public class TorrentLeechRssServer
 		    	((Request)request).setHandled(true);
 		    }
 		    else
-			if (target.equals("/download"))
+			if (target.startsWith("/download/") && target.endsWith(".torrent"))
 			{
-		        String id = request.getParameter("id");
-		        if (id == null) throw new ServletException("Missing id parameter");
+				String id = target.substring("/download/".length(), target.length() - ".torrent".length());
 		        Torrent t = m_torrents.get(id);
-		        InputStream in = doGet(t.downloadLink);
-		        response.setContentType("application/x-bittorrent");
-		        OutputStream out = response.getOutputStream();
-		        int c;
-		        while((c = in.read()) != -1) out.write(c);
+		        if (t == null)
+		        {
+		        	response.sendError(404, "Unknown torrent");
+		        }
+		        else
+		        {
+		        	
+		        	InputStream in = doGet(t.downloadLink);
+		        	response.setContentType("application/x-bittorrent");
+		        	OutputStream out = response.getOutputStream();
+		        	int c;
+		        	while((c = in.read()) != -1) out.write(c);
+		        }
 		        ((Request)request).setHandled(true);
 			}
 			else

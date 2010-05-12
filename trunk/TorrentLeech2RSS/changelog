@@ -1,4 +1,7 @@
-Version 2.0
+Version 2.0.1
+12/05/2010 : Changed download links to the form /download/ID.torrent, this enable programs that expect a valid file name to work with tl2rss.
+
+Version 2.0.0
 07/05/2010 : Fixed Recaptch "invalid referred' error.
 07/05/2010 : Added a configuration screen to control which categories are indexed
 07/05/2010 : Changed rss feel url from http://localhost:8080 to http://localhost:8080/rss
