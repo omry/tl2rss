@@ -110,7 +110,7 @@ public class TorrentLeechRssServer
 		Server server = new Server(m_port);
 		server.setHandler(new Handler());
         Context root = new Context(server, "/", Context.SESSIONS);
-        root.setBaseResource(Resource.newResource("file://" + new File("").getAbsolutePath() + "/jsp/", false));
+        root.setBaseResource(Resource.newResource(new File("jsp").getAbsolutePath() , false));
 //        root.addServlet(new ServletHolder(new DefaultServlet()), "/");
         root.addServlet(new ServletHolder(new DefaultServlet()), "/res/*");
         root.addServlet(new ServletHolder(new JspServlet()), "*.jsp");
