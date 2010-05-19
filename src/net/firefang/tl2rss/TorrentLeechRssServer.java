@@ -40,6 +40,7 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.apache.jasper.Constants;
 import org.apache.jasper.servlet.JspServlet;
 import org.apache.log4j.Logger;
 import org.apache.log4j.xml.DOMConfigurator;
@@ -113,7 +114,9 @@ public class TorrentLeechRssServer
         root.setBaseResource(Resource.newResource(new File("jsp").getAbsolutePath() , false));
 //        root.addServlet(new ServletHolder(new DefaultServlet()), "/");
         root.addServlet(new ServletHolder(new DefaultServlet()), "/res/*");
-        root.addServlet(new ServletHolder(new JspServlet()), "*.jsp");
+		ServletHolder jspholder = new ServletHolder(new JspServlet());
+		jspholder.setInitParameter("scratchdir", new File("jsp").getAbsolutePath());
+		root.addServlet(jspholder, "*.jsp");
         root.setWelcomeFiles(new String[]{"index.jsp"});
         server.addHandler(root);
 		
