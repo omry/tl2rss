@@ -1,3 +1,4 @@
+Version 2.0.2
 19/05/2010 : Added an help page that describes RSS feed parameters
 19/05/2010 : Fixed to work with a standard JRE by including precompiled classes of the jsp files
 19/05/2010 : Added max_per_cat parameter to rss (http://localhost:8080/rss?max_per_cat=4) to limit the number of torrents that appear per category.
