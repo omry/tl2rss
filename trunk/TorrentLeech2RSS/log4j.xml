@@ -27,7 +27,7 @@
     </logger>
 
     <logger name="org.apache.jasper.compiler">
-        <level value="warn"/>
+        <level value="debug"/>
 	</logger>
 	
     <root>
