@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
-	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/jdk1.6.0_18 (64bit)"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="lib" path="lib/htmlparser.jar" sourcepath="lib/htmlparser-src.zip"/>
 	<classpathentry kind="lib" path="lib/jetty-6.1.6.jar" sourcepath="lib/jetty-6.1.6-src.zip"/>
@@ -14,6 +14,6 @@
 	<classpathentry kind="lib" path="lib/jsp-2.1.jar" sourcepath="lib/jsp-2.1-6.1.11-sources.jar"/>
 	<classpathentry kind="lib" path="lib/jsp-api-2.1.jar"/>
 	<classpathentry kind="lib" path="lib/ant-1.6.5.jar"/>
-	<classpathentry kind="lib" path="jsp"/>
+	<classpathentry kind="lib" path="compiled_jsp"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

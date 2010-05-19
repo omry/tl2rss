@@ -47,6 +47,7 @@
     	<copy file="log4j.xml" todir="${BUILD_DIR}/dist/"></copy>
     	<copy file="build.properties" todir="${BUILD_DIR}/dist/"></copy>
     	<copydir src="jsp" dest="${BUILD_DIR}/dist/jsp"></copydir>
+    	<copydir src="compiled_jsp" dest="${BUILD_DIR}/dist/compiled_jsp"></copydir>
 
 		<copydir src="src"	dest="${BUILD_DIR}/dist/src" includes="**/*.java"/>
 
