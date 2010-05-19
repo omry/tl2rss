@@ -16,6 +16,7 @@ import java.net.HttpURLConnection;
 import java.net.InetAddress;
 import java.net.URL;
 import java.net.URLConnection;
+import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -72,7 +73,6 @@ import com.sun.syndication.feed.synd.SyndFeed;
 import com.sun.syndication.feed.synd.SyndFeedImpl;
 import com.sun.syndication.io.FeedException;
 import com.sun.syndication.io.SyndFeedOutput;
-import com.sun.syndication.io.impl.DateParser;
 
 /**
  * @author omry
@@ -300,13 +300,13 @@ public class TorrentLeechRssServer
 			} catch (ParserException e)
 			{
 				logger.warn("Error parsing html of category " + cat,e);
-			} 
+			}
 		}
 		m_lastUpdate = System.currentTimeMillis();
 	}
 
 	@SuppressWarnings("unchecked")
-	public String getRSS(Set<Integer> cats) throws FeedException
+	public String getRSS(Set<Integer> cats, int max_per_cat) throws FeedException
 	{
 		String feedType = "rss_2.0";
 		SyndFeed feed = new SyndFeedImpl();
@@ -319,33 +319,34 @@ public class TorrentLeechRssServer
 		List entries = new ArrayList();
 		feed.setEntries(entries);
 		
+		Map<Integer, Integer> cat_count = new HashMap<Integer, Integer>();
 		Vector v = new Vector();
 		for(Torrent t : m_torrents.values())
 		{
 			if (cats == null || cats.contains(t.cat))
+			{
+				Integer count = cat_count.get(t.cat);
+				if (count == null)
+					count = 0;
+				
+				if (max_per_cat == count)
+					continue;
+				count = count + 1;
+				cat_count.put(t.cat, count);
 				v.add(t);
+			}
 		}
 		
 		Collections.sort(v, new Comparator()
 		{
 			public int compare(Object t1, Object t2)
 			{
-				//2007-12-05 12:50:43
-				SimpleDateFormat parser = new SimpleDateFormat("yyyy-mm-dd HH:mm:ss");
 				Torrent a = (Torrent) t1;
 				Torrent b = (Torrent) t2;
-				try
-				{
-					Date d1 = parser.parse(a.date);
-					Date d2 = parser.parse(b.date);
-					return d2.compareTo(d1);
-				} 
-				catch (ParseException e)
-				{
-					return 0;
-				}
+				return (int) (b.date - a.date);
 			}
 		});
+		
 		
 		for (int i = 0; i < v.size(); i++)
 		{
@@ -354,7 +355,7 @@ public class TorrentLeechRssServer
 			SyndEntry entry = new SyndEntryImpl();
 			entry.setTitle(t.name);
 			entry.setLink(baseUrl + "/download/" +  t.id + ".torrent");
-			entry.setPublishedDate(DateParser.parseDate(t.date));
+			entry.setPublishedDate(new Date(t.date));
 			entries.add(entry);
 		}
 
@@ -410,9 +411,18 @@ public class TorrentLeechRssServer
 			{
 				in.close();
 			}
+			
+			try
+			{
+				Thread.sleep(2500);
+			} catch (InterruptedException e)
+			{
+			}			
 		}
 	}
 	
+	//2010-05-16 05:28:55
+	static DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss"); 
 	private void processTorrentsStream(int cat, InputStream in) throws UnsupportedEncodingException, ParserException
 	{
 		Parser parser = new Parser(new Lexer(new Page(in, "UTF-8")), Parser.DEVNULL);
@@ -449,7 +459,16 @@ public class TorrentLeechRssServer
 								}
 							}
 							String date = td.getChild(3).getText(); 
-							torrent.date = date;
+							Date dd;
+							try
+							{
+								dd = df.parse(date);
+							} catch (ParseException e)
+							{
+								logger.warn("Error parsing " + date + " : " + e.getClass().getName() + " : " + e.getMessage());
+								dd = new Date();
+							}
+							torrent.date = dd.getTime();
 						}
 						else
 						if (td.childAt(1) instanceof LinkTag)
@@ -584,7 +603,13 @@ public class TorrentLeechRssServer
 							while(t.hasMoreElements())
 								cats.add(Integer.parseInt(t.nextToken()));
 						}
-						response.getWriter().write(getRSS(cats));
+						
+
+						int max = -1;
+						String max_per_cat  = request.getParameter("max_per_cat");
+						if (max_per_cat != null) max = Integer.parseInt(max_per_cat);
+						
+						response.getWriter().write(getRSS(cats, max));
 					}
 					catch (FeedException e)
 					{
@@ -593,6 +618,7 @@ public class TorrentLeechRssServer
 				}
 				else
 				{
+					response.setStatus(403);
 		    		response.setContentType("text/html");
 		    		response.getWriter().write("Not authenticated, you need to <a href='/proxy/login.php'>Login</a>");
 				}
@@ -618,7 +644,7 @@ public class TorrentLeechRssServer
 	{
 		String id; 
 		String name;
-		String date;
+		long date;
 		String downloadLink;
 		long creationTime;
 		int cat;
@@ -921,8 +947,6 @@ public class TorrentLeechRssServer
 	
 	public void setUpdateCategories(String s) throws FileNotFoundException, IOException
 	{
-		logger.info("New update categories : " + s);
-		m_updateCategories = s;
 		Iterator<String> keys = m_torrents.keySet().iterator();
 		while(keys.hasNext())
 		{
@@ -932,6 +956,25 @@ public class TorrentLeechRssServer
 				keys.remove();
 		}
 		
+		StringTokenizer tok = new StringTokenizer(s, ", ");
+		boolean all = false;
+		while(tok.hasMoreElements())
+		{
+			int cat = Integer.parseInt(tok.nextToken());
+			if (cat == 0) all = true;
+		}
+		
+		if (all)
+		{
+			if (tok.countTokens() > 1)
+			{
+				logger.info("Reseting categories list to 0 only (all)");
+				s = "0";
+			}
+		}
+		
+		logger.info("New update categories : " + s);
+		m_updateCategories = s;
 		m_lastUpdate = 0;
 		synchronized (TorrentLeechRssServer.this)
 		{
