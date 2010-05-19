@@ -24,12 +24,22 @@
 
 %>
 <%!
+
 String cat(int id, String name)
 {
-	return "<td ><input id=c"+id+" name=c"+id+" type=\"checkbox\" "+(TorrentLeechRssServer.instance.categoryActive(id) ? "\"checked\"" : "")+"><label for=\"c"+id+"\">"+name+"</label></a></td>";
+	return cat1(id, name, true);
+}
+
+String cat1(int id, String name, boolean table)
+{
+	String s = "<input id=c"+id+" name=c"+id+" type=\"checkbox\" "+(TorrentLeechRssServer.instance.categoryActive(id) ? "\"checked\"" : "")+"><label for=\"c"+id+"\">"+name+"</label></a>";
+	if (table)
+		return "<td >"+s+"</td>";
+	else return s;
 } 
 %>
 <form method="POST" action=config.jsp>
+	<%= cat1(0, "All categories", false) %><br/><br/>
 	<table>
 	<tr>
 		<%= cat(27,"Anime/Cartoon") %>

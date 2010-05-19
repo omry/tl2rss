@@ -1,3 +1,9 @@
+19/05/2010 : Added max_per_cat parameter to rss (http://localhost:8080/rss?max_per_cat=4) to limit the number of torrents that appear per category.
+16/05/2010 : Added a category for 'all'
+16/05/2010 : Added pubdate to rss entries
+16/05/2010 : Added delay between queries (tl returned 403 if queried too fast)
+
+
 Version 2.0.1
 12/05/2010 : Changed download links to the form /download/ID.torrent, this enable programs that expect a valid file name to work with tl2rss.
 15/05/2010 : Fixed to work in Windows
