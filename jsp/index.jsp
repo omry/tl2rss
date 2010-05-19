@@ -19,6 +19,6 @@
 	}
 	%>
 	<br/>
-	<a href="/rss">RSS feed</><br/>
+	<a href="/rss">RSS feed</>&nbsp;&nbsp;&nbsp;&nbsp;<a href="help.jsp">(Feed parameters help)</a><br/>
 	<a href="/config.jsp">Configure TL2RSS</></a><br/>
 </html>
