@@ -391,14 +391,17 @@ public class TorrentLeechRssServer
 				entry.setTitle(t.name);
 				
 				String catName = m_categories.get(t.cat);
+				List syndCategories = new ArrayList();
+				SyndCategory allCategory = new SyndCategoryImpl();
+				allCategory.setName("All Categories"); 
+				syndCategories.add(allCategory);
 				if (catName != null)
 				{
-					List syndCategories = new ArrayList();
 					SyndCategory syndCategory = new SyndCategoryImpl();
 					syndCategory.setName(catName); 
 					syndCategories.add(syndCategory);
-					entry.setCategories(syndCategories);
 				}
+				entry.setCategories(syndCategories);
 				
 				entry.setLink(baseUrl + "/download/" +  t.id + ".torrent");
 				entry.setPublishedDate(new Date(t.date));

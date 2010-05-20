@@ -33,7 +33,7 @@ String cat(int id)
 
 String cat1(int id, String name, boolean table)
 {
-	String s = "<input id=c"+id+" name=c"+id+" type=\"checkbox\" "+(TorrentLeechRssServer.instance.categoryActive(id) ? "\"checked\"" : "")+"><label title='"+name +" (id :"+id+")' for=\"c"+id+"\">"+name+"</label></a>";
+	String s = "<input id=c"+id+" name=c"+id+" type=\"checkbox\" "+(TorrentLeechRssServer.instance.categoryActive(id) ? "checked" : "")+"><label title='"+name +" (id :"+id+")' for=\"c"+id+"\">"+name+"</label></a>";
 	if (table)
 		return "<td >"+s+"</td>";
 	else return s;
