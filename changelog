@@ -1,40 +1,41 @@
-Version 2.0.2
-19/05/2010 : Added an help page that describes RSS feed parameters
-19/05/2010 : Fixed to work with a standard JRE by including precompiled classes of the jsp files
-19/05/2010 : Added max_per_cat parameter to rss (http://localhost:8080/rss?max_per_cat=4) to limit the number of torrents that appear per category.
-16/05/2010 : Added a category for 'all'
-16/05/2010 : Added pubdate to rss entries
-16/05/2010 : Added delay between queries (tl returned 403 if queried too fast)
+Version 2.0.2 (20/05/2010)
+	Fixed to store configuration when changed via the config page
+	Added an help page that describes RSS feed parameters
+	Fixed to work with a standard JRE by including precompiled classes of the jsp files
+	Added max_per_cat parameter to rss (http://localhost:8080/rss?max_per_cat=4) to limit the number of torrents that appear per category.
+	Added a category for 'all'
+	Added pubdate and category to rss entries
+	Added delay between queries (tl returned 403 if queried too fast)
 
 
-Version 2.0.1
-12/05/2010 : Changed download links to the form /download/ID.torrent, this enable programs that expect a valid file name to work with tl2rss.
-15/05/2010 : Fixed to work in Windows
+Version 2.0.1 (12/05/2010)
+	Changed download links to the form /download/ID.torrent, this enable programs that expect a valid file name to work with tl2rss.
+	Fixed to work in Windows
 
-Version 2.0.0
-07/05/2010 : Fixed Recaptch "invalid referred' error.
-07/05/2010 : Added a configuration screen to control which categories are indexed
-07/05/2010 : Changed rss feel url from http://localhost:8080 to http://localhost:8080/rss
-07/05/2010 : Added supper for category based filter : http://localhost:8080/rss?cat=7,8 will show only categories 7 and 8 (if they are checked in the config screen)
+Version 2.0.0 (07/05/2010)
+	Fixed Recaptch "invalid referred' error.
+	Added a configuration screen to control which categories are indexed
+	Changed rss feel url from http://localhost:8080 to http://localhost:8080/rss
+	Added supper for category based filter : http://localhost:8080/rss?cat=7,8 will show only categories 7 and 8 (if they are checked in the config screen)
 
-Version 1.2.4
-24/06/2009 : Fixed a NullPointerException when response does not contain Content-Type header
+Version 1.2.4 (24/06/2009)
+	Fixed a NullPointerException when response does not contain Content-Type header
 
-Version 1.2.3
-05/05/2009 : TorrentLeech made some changes that exposed a bug. fixed it.
+Version 1.2.3 (05/05/2009)
+	TorrentLeech made some changes that exposed a bug. fixed it.
 
-Version 1.2.2
-17/03/2009 : Fixed to properly handle session timeout. will get back to the TL login screen.
+Version 1.2.2 (17/03/2009)
+	Fixed to properly handle session timeout. will get back to the TL login screen.
 
-Version 1.2.1
-12/03/2009 : Fixed built zip to contain source and build, so users can modify tl2rss easily.
-11/03/2009 : Fixed a bug that caused the cleanup thread to fail, resulting in ever growing list of torrents in the rss feed.
+Version 1.2.1 (12/03/2009)
+	Fixed built zip to contain source and build, so users can modify tl2rss easily.
+	Fixed a bug that caused the cleanup thread to fail, resulting in ever growing list of torrents in the rss feed.
 
-Version 1.2.0
-05/03/2009 : No longer requires cookies in configuration file, now displays a torrentleech login screen if needed when accessed through a browser.
-05/03/2009 : No longer required renaming the configuration file on first use. it now just copies  the sample configuration file automatically.
+Version 1.2.0 (05/03/2009)
+	No longer requires cookies in configuration file, now displays a torrentleech login screen if needed when accessed through a browser.
+	No longer required renaming the configuration file on first use. it now just copies  the sample configuration file automatically.
 
-Version 1.1.2
-05/03/2009: Fixed download links to no longer contain session id and uid.
-05/03/2009: Added connection timeout when updating torrents to prevent update thread from getting stuck in case the server does not respond
-03/03/2009: Changed to grab a few additional pages for each category uppon first run
+Version 1.1.2 (05/03/2009)
+	Fixed download links to no longer contain session id and uid.
+	Added connection timeout when updating torrents to prevent update thread from getting stuck in case the server does not respond
+	Changed to grab a few additional pages for each category uppon first run

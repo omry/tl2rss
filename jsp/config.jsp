@@ -25,9 +25,10 @@
 %>
 <%!
 
-String cat(int id, String name)
+String cat(int id)
 {
-	return cat1(id, name, true);
+	String name = TorrentLeechRssServer.instance.getCategory(id);
+	return cat1(id, name, true); 
 }
 
 String cat1(int id, String name, boolean table)
@@ -39,46 +40,46 @@ String cat1(int id, String name, boolean table)
 } 
 %>
 <form method="POST" action=config.jsp>
-	<%= cat1(0, "All categories", false) %><br/><br/>
+	<%= cat1(0, "All Categories", false) %><br/><br/>
 	<table>
 	<tr>
-		<%= cat(27,"Anime/Cartoon") %>
-		<%= cat(39,"Appz/MAC") %>
-		<%= cat(22,"Appz/misc") %>
-		<%= cat(1,"Appz/PC ISO") %>
+		<%= cat(27) %>
+		<%= cat(39) %>
+		<%= cat(22) %>
+		<%= cat(1 ) %>
 	</tr><tr>
-		<%= cat(32,"Appz/PDA") %>
-		<%= cat(28,"Books - Mags") %>
-		<%= cat(40,"Documentaries") %>
-		<%= cat(33,"Episodes/Boxsets") %>
+		<%= cat(32) %>
+		<%= cat(28) %>
+		<%= cat(40) %>
+		<%= cat(33) %>
 	</tr><tr>
-		<%= cat(7,"Episodes/TV") %>
-		<%= cat(4,"Games/PC ISO") %>
-		<%= cat(41,"Games/PC Retro") %>
-		<%= cat(21,"Games/PC Rips") %>
+		<%= cat(7 ) %>
+		<%= cat(4 ) %>
+		<%= cat(41) %>
+		<%= cat(21) %>
 	</tr><tr>
-		<%= cat(17,"Games/PS2") %>
-		<%= cat(45,"Games/PS2 Retro") %>
-		<%= cat(26,"Games/PSP") %>
-		<%= cat(36,"Games/Wii") %>
+		<%= cat(17) %>
+		<%= cat(45) %>
+		<%= cat(26) %>
+		<%= cat(36) %>
 	</tr><tr>
-		<%= cat(44,"Games/X360 Retro") %>
-		<%= cat(24,"Games/XBOX") %>
-		<%= cat(10,"Games/XBOX360") %>
-		<%= cat(20,"Movies/DBD-R") %>
+		<%= cat(44) %>
+		<%= cat(24) %>
+		<%= cat(10) %>
+		<%= cat(20) %>
 	</tr><tr>
-		<%= cat(43,"Movies/Foreign") %>
-		<%= cat(35,"Movies/HD-x264") %>
-		<%= cat(38,"Movies/Music DVD") %>
-		<%= cat(42,"Movies/Retro") %>
+		<%= cat(43) %>
+		<%= cat(35) %>
+		<%= cat(38) %>
+		<%= cat(42) %>
 	</tr><tr>
-		<%= cat(19,"Movies/XviD") %>
-		<%= cat(6,"Music") %>
-		<%= cat(11,"Nintendo DS") %>
-		<%= cat(47,"NonScene/BRRip-x264") %>
+		<%= cat(19) %>
+		<%= cat(6 ) %>
+		<%= cat(11) %>
+		<%= cat(47) %>
 	</tr><tr>
-		<%= cat(46,"NonScene/BRRip-XviD") %>
-		<%= cat(48,"NonScene/Xvid") %>
+		<%= cat(46) %>
+		<%= cat(48) %>
 	</tr>
 	</table>
 	<input type="hidden" name="save" value="true" />
