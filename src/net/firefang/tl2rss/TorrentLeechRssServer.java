@@ -677,7 +677,6 @@ public class TorrentLeechRssServer
 				}
 				else
 				{
-					response.setStatus(403);
 		    		response.setContentType("text/html");
 		    		response.getWriter().write("Not authenticated, you need to <a href='/proxy/login.php'>Login</a>");
 				}
