@@ -1,11 +1,11 @@
 Version 2.0.2 (20/05/2010)
-	Fixed to store configuration when changed via the config page
 	Added an help page that describes RSS feed parameters
-	Fixed to work with a standard JRE by including precompiled classes of the jsp files
 	Added max_per_cat parameter to rss (http://localhost:8080/rss?max_per_cat=4) to limit the number of torrents that appear per category.
 	Added a category for 'all'
 	Added pubdate and category to rss entries
-	Added delay between queries (tl returned 403 if queried too fast)
+	Fixed to store configuration when changed via the config page
+	Fixed to work with a standard JRE by including precompiled classes of the jsp files
+	Fixed to use a delay between queries (tl returned 403 if queried too fast)
 
 
 Version 2.0.1 (12/05/2010)
