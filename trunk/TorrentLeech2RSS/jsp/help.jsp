@@ -18,7 +18,7 @@
 	Notes: 
 	<ul>
 		<li>You can obtain category ides from the <a href="/config.jsp">config</a> page by hoveing above a specific category. the tooltip will contain the ID</li>
-		<li>It's possible to combine multiple parameters by separating  them by &amp; ,for example  <a href="/rss?max_per_cat=2&cat=5">/rss?max_per_cat=2&amp;cat=7</a></li>
+		<li>It's possible to combine multiple parameters by separating  them by &amp; ,for example  <a href="/rss?max_per_cat=2&cat=7">/rss?max_per_cat=2&amp;cat=7</a></li>
 	</ul>
 </body>
 </html>

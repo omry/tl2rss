@@ -40,6 +40,7 @@
     	</copy>
     	
     	<copy file="sample-conf.properties" todir="${BUILD_DIR}/dist/"></copy>
+    	<copy file="categories.txt" todir="${BUILD_DIR}/dist/"></copy>
     	<copy file="changelog" todir="${BUILD_DIR}/dist/"></copy>
     	<copy file="README" todir="${BUILD_DIR}/dist/"></copy>
     	<copy file="gpl-3.0.txt" todir="${BUILD_DIR}/dist/"></copy>

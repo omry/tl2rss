@@ -1,6 +1,7 @@
 package net.firefang.tl2rss;
 
 import java.io.BufferedInputStream;
+import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -10,6 +11,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
@@ -67,6 +69,9 @@ import org.mortbay.jetty.servlet.DefaultServlet;
 import org.mortbay.jetty.servlet.ServletHolder;
 import org.mortbay.resource.Resource;
 
+import com.sun.syndication.feed.atom.Category;
+import com.sun.syndication.feed.synd.SyndCategory;
+import com.sun.syndication.feed.synd.SyndCategoryImpl;
 import com.sun.syndication.feed.synd.SyndEntry;
 import com.sun.syndication.feed.synd.SyndEntryImpl;
 import com.sun.syndication.feed.synd.SyndFeed;
@@ -94,10 +99,13 @@ public class TorrentLeechRssServer
 	
 	Map<String,String> m_cookies = new HashMap<String, String>();
 	
+	Map<Integer, String> m_categories;
+	
 	public TorrentLeechRssServer(Properties props) throws Exception
 	{
 		instance = this;
 		loadCookies();
+		loadCategories();
 		
 		m_updateCategories = props.getProperty("update_categories", "7");
 		m_host = props.getProperty("host", InetAddress.getLocalHost().getHostName());
@@ -139,6 +147,32 @@ public class TorrentLeechRssServer
 		startCleanupThread();
 	}
 	
+	private void loadCategories() throws IOException
+	{
+		m_categories = new HashMap<Integer, String>();
+		Pattern pattern = Pattern.compile("([0-9]+)=(.*)");
+		BufferedReader b = new BufferedReader(new InputStreamReader( new FileInputStream("categories.txt")));
+		try
+		{
+			String line = null;
+			while((line = b.readLine()) != null)
+			{
+				Matcher matcher = pattern.matcher(line);
+				if (matcher.matches())
+				{						
+					int category = Integer.parseInt(matcher.group(1));
+					String desc = matcher.group(2);
+					m_categories.put(category, desc);
+				}
+				
+			}
+		}
+		finally
+		{
+			b.close();
+		}
+	}
+
 	private void loadCookies()
 	{
 		if (!new File("cookies.txt").exists()) return;
@@ -325,18 +359,7 @@ public class TorrentLeechRssServer
 		Vector v = new Vector();
 		for(Torrent t : m_torrents.values())
 		{
-			if (cats == null || cats.contains(t.cat))
-			{
-				Integer count = cat_count.get(t.cat);
-				if (count == null)
-					count = 0;
-				
-				if (max_per_cat == count)
-					continue;
-				count = count + 1;
-				cat_count.put(t.cat, count);
-				v.add(t);
-			}
+			v.add(t);
 		}
 		
 		Collections.sort(v, new Comparator()
@@ -353,15 +376,37 @@ public class TorrentLeechRssServer
 		for (int i = 0; i < v.size(); i++)
 		{
 			Torrent t = (Torrent) v.elementAt(i);
+			if (cats == null || cats.contains(t.cat))
+			{
+				Integer count = cat_count.get(t.cat);
+				if (count == null)
+					count = 0;
+				
+				if (max_per_cat == count)
+					continue;
+				count = count + 1;
+				cat_count.put(t.cat, count);
+				
+				SyndEntry entry = new SyndEntryImpl();
+				entry.setTitle(t.name);
+				
+				String catName = m_categories.get(t.cat);
+				if (catName != null)
+				{
+					List syndCategories = new ArrayList();
+					SyndCategory syndCategory = new SyndCategoryImpl();
+					syndCategory.setName(catName); 
+					syndCategories.add(syndCategory);
+					entry.setCategories(syndCategories);
+				}
+				
+				entry.setLink(baseUrl + "/download/" +  t.id + ".torrent");
+				entry.setPublishedDate(new Date(t.date));
+				entries.add(entry);
+			}
 			
-			SyndEntry entry = new SyndEntryImpl();
-			entry.setTitle(t.name);
-			entry.setLink(baseUrl + "/download/" +  t.id + ".torrent");
-			entry.setPublishedDate(new Date(t.date));
-			entries.add(entry);
 		}
 
-		
 		SyndFeedOutput output = new SyndFeedOutput();
 		return output.outputString(feed);
 	}
@@ -425,23 +470,35 @@ public class TorrentLeechRssServer
 	
 	//2010-05-16 05:28:55
 	static DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss"); 
+	static Pattern catLink = Pattern.compile("browse.php\\?cat=([0-9]+)");
+	static Pattern detailsLink = Pattern.compile("details.php\\?id=(.*)&amp.*");
+	static Pattern downloadLink = Pattern.compile("download.php/(.*)/.*");
 	private void processTorrentsStream(int cat, InputStream in) throws UnsupportedEncodingException, ParserException
 	{
 		Parser parser = new Parser(new Lexer(new Page(in, "UTF-8")), Parser.DEVNULL);
 		NodeList res = parser.extractAllNodesThatMatch(getDownloadsFilter());
-		Pattern detailsLink = Pattern.compile("details.php\\?id=(.*)&amp.*");
-		Pattern downloadLink = Pattern.compile("download.php/(.*)/.*");
 		for (int i = 0; i < res.size(); i++)
 		{
 			Torrent torrent = null;
 			Node node = res.elementAt(i);
 			NodeList children = node.getChildren();
+			int category = -1;
 			for (int j = 0; j < children.size(); j++)
 			{
 				Node c = children.elementAt(j);
 				if (c instanceof TableColumn)
 				{
 					TableColumn td = (TableColumn) c;
+					if (td.getChildCount() == 1 && td.childAt(0) instanceof LinkTag)
+					{
+						String link = ((LinkTag)td.childAt(0)).extractLink();
+						Matcher matcher = catLink.matcher(link);
+						if (matcher.matches())
+						{						
+							category = Integer.parseInt(matcher.group(1));			
+						}
+					}
+					else
 					if (td.getChildCount() >= 3)
 					{
 						if (td.childAt(0) instanceof LinkTag)
@@ -452,7 +509,7 @@ public class TorrentLeechRssServer
 							if (matcher.matches())
 							{
 								String id = matcher.group(1);
-								torrent = getTorrent(id, cat);
+								torrent = getTorrent(id, category);
 								
 								if (href.getChildCount() > 2)
 								{
@@ -949,13 +1006,16 @@ public class TorrentLeechRssServer
 	
 	public void setUpdateCategories(String s) throws FileNotFoundException, IOException
 	{
-		Iterator<String> keys = m_torrents.keySet().iterator();
-		while(keys.hasNext())
+		synchronized (m_torrents)
 		{
-			String id = keys.next();
-			Torrent t = m_torrents.get(id);
-			if (!categoryActive(t.cat))
-				keys.remove();
+			Iterator<String> keys = m_torrents.keySet().iterator();
+			while(keys.hasNext())
+			{
+				String id = keys.next();
+				Torrent t = m_torrents.get(id);
+				if (!categoryActive(t.cat))
+					keys.remove();
+			}
 		}
 		
 		StringTokenizer tok = new StringTokenizer(s, ", ");
@@ -991,10 +1051,24 @@ public class TorrentLeechRssServer
 		File file = new File("conf.properties");
 		props.load(new FileInputStream(file));
 		props.put("update_categories", m_updateCategories);
+		FileOutputStream f = new FileOutputStream(file);
+		try
+		{
+			props.store(f, "Updated by TL2RSS");
+		}
+		finally
+		{
+			f.close();
+		}
 	}
 	
 	public boolean categoryActive(int id)
 	{
 		return m_updateCategories.contains(""+id);
+	}
+	
+	public String getCategory(int id)
+	{
+		return m_categories.get(id);
 	}
 }
