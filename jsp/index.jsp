@@ -8,7 +8,7 @@
 	<% if (!TorrentLeechRssServer.instance.isAuthenticated())
 	{
 %>
-<a href="/proxy/login.php">Log into TorrentLeech</></a><br/>
+<a href="/proxy/user/account/login/">Log into TorrentLeech</></a><br/>
 <%
 	}
 	else
