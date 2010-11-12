@@ -364,6 +364,7 @@ public class TorrentLeechRssServer
 	{
 		String feedType = "rss_2.0";
 		SyndFeed feed = new SyndFeedImpl();
+		feed.setEncoding("UTF-8");
 		feed.setFeedType(feedType);
 
 		feed.setTitle("TorrentLeech RSS Feed");
