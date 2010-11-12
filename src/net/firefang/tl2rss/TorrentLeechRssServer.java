@@ -52,9 +52,6 @@ import org.htmlparser.beans.FilterBean;
 import org.htmlparser.filters.AndFilter;
 import org.htmlparser.filters.HasAttributeFilter;
 import org.htmlparser.filters.HasChildFilter;
-import org.htmlparser.filters.HasSiblingFilter;
-import org.htmlparser.filters.NodeClassFilter;
-import org.htmlparser.filters.NotFilter;
 import org.htmlparser.filters.TagNameFilter;
 import org.htmlparser.lexer.Lexer;
 import org.htmlparser.lexer.Page;
@@ -1112,5 +1109,24 @@ public class TorrentLeechRssServer
 	public Iterator<CategoryGroup> catGroups()
 	{
 		return m_catGroups.iterator();
+	}
+	
+	public String getUpdatedCategories()
+	{
+		String res = "";
+		StringTokenizer tok = new StringTokenizer(m_updateCategories, ", ");
+		while(tok.hasMoreElements())
+		{
+			int cat = Integer.parseInt(tok.nextToken());
+			if (res != "") res += ",";
+			res += getCategory(cat);
+		}
+		
+		return res;
+	}
+	
+	public int numTorrents()
+	{
+		return m_torrents.size();
 	}
 }
