@@ -407,7 +407,13 @@ public class TorrentLeechRssServer
 				cat_count.put(t.cat, count);
 				
 				SyndEntry entry = new SyndEntryImpl();
-				entry.setTitle(t.name);
+				try 
+				{
+					entry.setTitle(new String(t.name.getBytes("UTF-8")));
+				}
+				catch (UnsupportedEncodingException e) 
+				{
+				}
 				
 				String catName = m_categories.get(t.cat);
 				List syndCategories = new ArrayList();
@@ -1068,6 +1074,7 @@ public class TorrentLeechRssServer
 		logger.info("New update categories : " + s);
 		m_updateCategories = s;
 		m_lastUpdate = 0;
+		m_torrents.clear();
 		synchronized (TorrentLeechRssServer.this)
 		{
 			TorrentLeechRssServer.this.notifyAll();
