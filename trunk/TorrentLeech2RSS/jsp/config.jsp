@@ -1,4 +1,5 @@
 <%@page import="net.firefang.tl2rss.*"%>
+<%@page import="java.util.*"%>
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Frameset//EN" "http://www.w3.org/TR/html4/frameset.dtd">
 <html>
 <head>
@@ -40,47 +41,31 @@ String cat1(int id, String name, boolean table)
 } 
 %>
 <form method="POST" action=config.jsp>
+
 	<%= cat1(0, "All Categories", false) %><br/><br/>
 	<table>
-	<tr>
-		<%= cat(27) %>
-		<%= cat(39) %>
-		<%= cat(22) %>
-		<%= cat(1 ) %>
-	</tr><tr>
-		<%= cat(32) %>
-		<%= cat(28) %>
-		<%= cat(40) %>
-		<%= cat(33) %>
-	</tr><tr>
-		<%= cat(7 ) %>
-		<%= cat(4 ) %>
-		<%= cat(41) %>
-		<%= cat(21) %>
-	</tr><tr>
-		<%= cat(17) %>
-		<%= cat(45) %>
-		<%= cat(26) %>
-		<%= cat(36) %>
-	</tr><tr>
-		<%= cat(44) %>
-		<%= cat(24) %>
-		<%= cat(10) %>
-		<%= cat(20) %>
-	</tr><tr>
-		<%= cat(43) %>
-		<%= cat(35) %>
-		<%= cat(38) %>
-		<%= cat(42) %>
-	</tr><tr>
-		<%= cat(19) %>
-		<%= cat(6 ) %>
-		<%= cat(11) %>
-		<%= cat(47) %>
-	</tr><tr>
-		<%= cat(46) %>
-		<%= cat(48) %>
-	</tr>
+	<%
+		Iterator<CategoryGroup> groups = TorrentLeechRssServer.instance.catGroups();
+		while(groups.hasNext())
+		{
+			CategoryGroup group = groups.next();
+			%>
+			<tr>
+			<td><%=group.name()%></td>
+			<%
+			
+			for(Category c : group.cats())
+			{
+				%>
+				<td><%=cat(c.id())%></td>
+				<%
+			}
+			
+			%>
+			</tr>
+			<%
+		}
+	%>
 	</table>
 	<input type="hidden" name="save" value="true" />
 	<input type="submit" value="Save" />

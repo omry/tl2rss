@@ -17,7 +17,6 @@ import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.InetAddress;
 import java.net.URL;
-import java.net.URLConnection;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -48,6 +47,8 @@ import org.apache.log4j.xml.DOMConfigurator;
 import org.htmlparser.Node;
 import org.htmlparser.NodeFilter;
 import org.htmlparser.Parser;
+import org.htmlparser.Tag;
+import org.htmlparser.beans.FilterBean;
 import org.htmlparser.filters.AndFilter;
 import org.htmlparser.filters.HasAttributeFilter;
 import org.htmlparser.filters.HasChildFilter;
@@ -57,6 +58,8 @@ import org.htmlparser.filters.NotFilter;
 import org.htmlparser.filters.TagNameFilter;
 import org.htmlparser.lexer.Lexer;
 import org.htmlparser.lexer.Page;
+import org.htmlparser.nodes.TextNode;
+import org.htmlparser.tags.CompositeTag;
 import org.htmlparser.tags.LinkTag;
 import org.htmlparser.tags.TableColumn;
 import org.htmlparser.util.NodeList;
@@ -69,7 +72,6 @@ import org.mortbay.jetty.servlet.DefaultServlet;
 import org.mortbay.jetty.servlet.ServletHolder;
 import org.mortbay.resource.Resource;
 
-import com.sun.syndication.feed.atom.Category;
 import com.sun.syndication.feed.synd.SyndCategory;
 import com.sun.syndication.feed.synd.SyndCategoryImpl;
 import com.sun.syndication.feed.synd.SyndEntry;
@@ -99,6 +101,7 @@ public class TorrentLeechRssServer
 	
 	Map<String,String> m_cookies = new HashMap<String, String>();
 	
+	List<CategoryGroup> m_catGroups;
 	Map<Integer, String> m_categories;
 	
 	public TorrentLeechRssServer(Properties props) throws Exception
@@ -150,21 +153,35 @@ public class TorrentLeechRssServer
 	private void loadCategories() throws IOException
 	{
 		m_categories = new HashMap<Integer, String>();
-		Pattern pattern = Pattern.compile("([0-9]+)=(.*)");
+		m_catGroups = new ArrayList<CategoryGroup>();
+		Pattern groupMatch = Pattern.compile("\\[(.)*\\]");
+		Pattern categoryMatch = Pattern.compile("([0-9]+)=(.*)");
 		BufferedReader b = new BufferedReader(new InputStreamReader( new FileInputStream("categories.txt")));
+		
 		try
 		{
+			CategoryGroup currentGroup = null;
 			String line = null;
 			while((line = b.readLine()) != null)
 			{
-				Matcher matcher = pattern.matcher(line);
-				if (matcher.matches())
-				{						
-					int category = Integer.parseInt(matcher.group(1));
-					String desc = matcher.group(2);
-					m_categories.put(category, desc);
+				Matcher gm = groupMatch.matcher(line);
+				if (gm.matches())
+				{
+					String group = line.substring(1, line.length() - 1);
+					currentGroup = new CategoryGroup(group);
+					m_catGroups.add(currentGroup);
 				}
-				
+				else
+				{
+					Matcher matcher = categoryMatch.matcher(line);
+					if (matcher.matches())
+					{						
+						int category = Integer.parseInt(matcher.group(1));
+						String desc = matcher.group(2);
+						m_categories.put(category, desc);
+						currentGroup.categories.add(new Category(category, desc));
+					}
+				}
 			}
 		}
 		finally
@@ -188,7 +205,8 @@ public class TorrentLeechRssServer
 			{
 				String key =(String)keys.nextElement();
 				String value = props.getProperty(key);
-				m_cookies.put(key, value);
+				if (!"JSESSIONID".equals(key))
+					m_cookies.put(key, value);
 				logger.info("Loaded cookie " + key + "=" + value);
 			}
 		} catch (IOException e)
@@ -428,39 +446,53 @@ public class TorrentLeechRssServer
 	private void updateCategory(int cat, boolean firstRun) throws ParserException, IOException 
 	{
 		List<String> urls = new ArrayList<String>();
-		urls.add("http://www.torrentleech.org/browse.php?cat="+cat);
+		urls.add("http://www.torrentleech.org/torrents/browse/index/categories/"+cat+"/page/1");
 		if (firstRun) // grab a few more additional pages
 		{
-			urls.add("http://www.torrentleech.org/browse.php?page=1&cat="+cat);
-			urls.add("http://www.torrentleech.org/browse.php?page=2&cat="+cat);
-			urls.add("http://www.torrentleech.org/browse.php?page=3&cat="+cat);
+			urls.add("http://www.torrentleech.org/torrents/browse/index/categories/"+cat+"/page/2");
+			urls.add("http://www.torrentleech.org/torrents/browse/index/categories/"+cat+"/page/3");
+			urls.add("http://www.torrentleech.org/torrents/browse/index/categories/"+cat+"/page/4");
 		}
 
 		for(String u : urls)
 		{
 			URL url = new URL(u);
 			logger.info("Updating torrents : " + url);
-			URLConnection conn = (HttpURLConnection) url.openConnection();
+			HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setConnectTimeout(30000);
             conn.setReadTimeout(30000);
 			conn.setRequestProperty("Cookie", getCookiesString());
+			conn.setRequestProperty("Host", "www.torrentleech.org");
+			int resp = conn.getResponseCode();
+			logger.debug("Response code : " + resp);
+			ByteArrayOutputStream bout = new ByteArrayOutputStream();
 			InputStream in = conn.getInputStream();
-    	    List<String> cookies = (List<String>) conn.getHeaderFields().get("Set-Cookie");
-	        boolean authenticated = handleCookies(cookies);
-			if (!authenticated) 
-			{
-				logger.warn("No longer authenticated, aborting torrents update");
-				return;
-			}
-
 			try
 			{
-				processTorrentsStream(cat, in);
+				BufferedInputStream bin = new BufferedInputStream(in);
+				int c;
+				while((c = bin.read()) != -1)
+				{
+					bout.write(c);
+				}
 			}
 			finally
 			{
 				in.close();
 			}
+			
+			byte data[] = bout.toByteArray();
+    	    List<String> cookies = (List<String>) conn.getHeaderFields().get("Set-Cookie");
+	        boolean authenticated = handleCookies(cookies);
+			if (!authenticated) 
+			{
+				logger.warn("No longer authenticated, aborting torrents update");
+				m_cookies.clear();
+				saveCookies();
+				return;
+			}
+
+			processTorrentsStream(new ByteArrayInputStream(data));
 			
 			try
 			{
@@ -473,79 +505,82 @@ public class TorrentLeechRssServer
 	
 	//2010-05-16 05:28:55
 	static DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss"); 
-	static Pattern catLink = Pattern.compile("browse.php\\?cat=([0-9]+)");
-	static Pattern detailsLink = Pattern.compile("details.php\\?id=(.*)&amp.*");
-	static Pattern downloadLink = Pattern.compile("download.php/(.*)/.*");
-	private void processTorrentsStream(int cat, InputStream in) throws UnsupportedEncodingException, ParserException
+	static Pattern catLink = Pattern.compile("/torrents/browse/index/categories/([0-9]+)");
+	private void processTorrentsStream(InputStream in) throws UnsupportedEncodingException, ParserException
 	{
 		Parser parser = new Parser(new Lexer(new Page(in, "UTF-8")), Parser.DEVNULL);
 		NodeList res = parser.extractAllNodesThatMatch(getDownloadsFilter());
 		for (int i = 0; i < res.size(); i++)
 		{
-			Torrent torrent = null;
+			
+			
+			/*
+			 * Extract:
+ 			String id; 
+			String name;
+			long date;
+			String downloadLink;
+			long creationTime;
+			int cat;
+			*/
+			
 			Node node = res.elementAt(i);
 			NodeList children = node.getChildren();
+			String id = ((Tag)node).getAttribute("id");
 			int category = -1;
+			Torrent torrent = null;
 			for (int j = 0; j < children.size(); j++)
 			{
 				Node c = children.elementAt(j);
 				if (c instanceof TableColumn)
 				{
 					TableColumn td = (TableColumn) c;
-					if (td.getChildCount() == 1 && td.childAt(0) instanceof LinkTag)
+					if ("category".equals(((Tag)c).getAttribute("class")))
 					{
-						String link = ((LinkTag)td.childAt(0)).extractLink();
-						Matcher matcher = catLink.matcher(link);
-						if (matcher.matches())
-						{						
-							category = Integer.parseInt(matcher.group(1));			
+						if (td.getChildCount() == 1 && td.childAt(0) instanceof LinkTag)
+						{
+							String link = ((LinkTag)td.childAt(0)).extractLink();
+							Matcher matcher = catLink.matcher(link);
+							if (matcher.matches())
+							{						
+								category = Integer.parseInt(matcher.group(1));
+								torrent = getTorrent(id, category);
+							}
 						}
 					}
 					else
-					if (td.getChildCount() >= 3)
+					if ("name".equals(((Tag)c).getAttribute("class")))
 					{
-						if (td.childAt(0) instanceof LinkTag)
+						CompositeTag title = (CompositeTag) td.childAt(0);
+						if (title.childAt(0) instanceof LinkTag)
 						{
-							LinkTag href = (LinkTag) td.childAt(0);
-							String link = href.extractLink();
-							Matcher matcher = detailsLink.matcher(link);
-							if (matcher.matches())
-							{
-								String id = matcher.group(1);
-								torrent = getTorrent(id, category);
-								
-								if (href.getChildCount() > 2)
-								{
-									String name = href.childAt(1).getText();
-									torrent.name = name;
-								}
-							}
-							String date = td.getChild(3).getText(); 
-							Date dd;
-							try
-							{
-								dd = df.parse(date);
-							} catch (ParseException e)
-							{
-								logger.warn("Error parsing " + date + " : " + e.getClass().getName() + " : " + e.getMessage());
-								dd = new Date();
-							}
-							torrent.date = dd.getTime();
+							LinkTag href = (LinkTag) title.childAt(0);
+							torrent.name = ((TextNode) href.getChild(0)).getText(); 
 						}
-						else
-						if (td.childAt(1) instanceof LinkTag)
+						
+						NodeList ch = c.getChildren();
+						for (int k = 0; k < ch.size(); k++)
 						{
-							LinkTag href = (LinkTag) td.childAt(1);
-							String link = href.extractLink();
-							Matcher matcher = downloadLink.matcher(link);
-							if (matcher.matches())
+							Node created = ch.elementAt(k);
+							if (created instanceof TextNode)
 							{
-								String id = matcher.group(1);
-								if (torrent == null)
+								TextNode createdt = (TextNode) created;
+								String str = createdt.getText();
+								if (str.startsWith(" on "))
 								{
-									torrent = getTorrent(id, cat);
+									String d = str.substring(" on ".length());
+									Date dd;
+									try
+									{
+										dd = df.parse(d);
+									} catch (ParseException e)
+									{
+										logger.warn("Error parsing " + d + " : " + e.getClass().getName() + " : " + e.getMessage());
+										dd = new Date();
+									}
+									torrent.date = dd.getTime();
+									
 								}
-								torrent.downloadLink = "http://www.torrentleech.org/" + link;
 							}
 						}
 					}
@@ -567,54 +602,37 @@ public class TorrentLeechRssServer
 
 	private NodeFilter getDownloadsFilter()
 	{
-        NodeClassFilter filter0 = new NodeClassFilter ();
-        try { filter0.setMatchClass (Class.forName ("org.htmlparser.tags.TableRow")); } catch (ClassNotFoundException cnfe) { cnfe.printStackTrace (); }
-        NodeClassFilter filter1 = new NodeClassFilter ();
-        try { filter1.setMatchClass (Class.forName ("org.htmlparser.tags.TableColumn")); } catch (ClassNotFoundException cnfe) { cnfe.printStackTrace (); }
+        TagNameFilter filter0 = new TagNameFilter ();
+        filter0.setName ("TR");
+        HasAttributeFilter filter1 = new HasAttributeFilter ();
+        filter1.setAttributeName ("id");
         TagNameFilter filter2 = new TagNameFilter ();
-        filter2.setName ("CENTER");
-        NodeClassFilter filter3 = new NodeClassFilter ();
-        try { filter3.setMatchClass (Class.forName ("org.htmlparser.tags.LinkTag")); } catch (ClassNotFoundException cnfe) { cnfe.printStackTrace (); }
-        HasSiblingFilter filter4 = new HasSiblingFilter ();
-        filter4.setSiblingFilter (filter3);
+        filter2.setName ("TD");
+        HasAttributeFilter filter3 = new HasAttributeFilter ();
+        filter3.setAttributeName ("class");
+        filter3.setAttributeValue ("category");
         NodeFilter[] array0 = new NodeFilter[2];
         array0[0] = filter2;
-        array0[1] = filter4;
-        AndFilter filter5 = new AndFilter ();
-        filter5.setPredicates (array0);
-        HasChildFilter filter6 = new HasChildFilter ();
-        filter6.setRecursive (false);
-        filter6.setChildFilter (filter5);
-        NodeFilter[] array1 = new NodeFilter[2];
-        array1[0] = filter1;
-        array1[1] = filter6;
-        AndFilter filter7 = new AndFilter ();
-        filter7.setPredicates (array1);
-        HasChildFilter filter8 = new HasChildFilter ();
-        filter8.setRecursive (true);
-        filter8.setChildFilter (filter7);
-        NodeClassFilter filter9 = new NodeClassFilter ();
-        try { filter9.setMatchClass (Class.forName ("org.htmlparser.tags.TableColumn")); } catch (ClassNotFoundException cnfe) { cnfe.printStackTrace (); }
-        HasAttributeFilter filter10 = new HasAttributeFilter ();
-        filter10.setAttributeName ("class");
-        filter10.setAttributeValue ("xexe");
-        NodeFilter[] array2 = new NodeFilter[2];
-        array2[0] = filter9;
-        array2[1] = filter10;
-        AndFilter filter11 = new AndFilter ();
-        filter11.setPredicates (array2);
-        HasChildFilter filter12 = new HasChildFilter ();
-        filter12.setRecursive (false);
-        filter12.setChildFilter (filter11);
-        NotFilter filter13 = new NotFilter ();
-        filter13.setPredicate (filter12);
-        NodeFilter[] array3 = new NodeFilter[3];
-        array3[0] = filter0;
-        array3[1] = filter8;
-        array3[2] = filter13;
-        AndFilter filter14 = new AndFilter ();
-        filter14.setPredicates (array3);
-        return filter14;
+        array0[1] = filter3;
+        AndFilter filter4 = new AndFilter ();
+        filter4.setPredicates (array0);
+        HasChildFilter filter5 = new HasChildFilter ();
+        filter5.setRecursive (false);
+        filter5.setChildFilter (filter4);
+        NodeFilter[] array1 = new NodeFilter[3];
+        array1[0] = filter0;
+        array1[1] = filter1;
+        array1[2] = filter5;
+        AndFilter filter6 = new AndFilter ();
+        filter6.setPredicates (array1);
+        NodeFilter[] array2 = new NodeFilter[1];
+        array2[0] = filter6;
+        FilterBean bean = new FilterBean ();
+        bean.setFilters (array2);
+        
+        AndFilter finalFilter = new AndFilter ();
+        finalFilter.setPredicates (array2);
+        return finalFilter;
 	}
 	
 	private final class Handler extends DefaultHandler
@@ -681,7 +699,7 @@ public class TorrentLeechRssServer
 				else
 				{
 		    		response.setContentType("text/html");
-		    		response.getWriter().write("Not authenticated, you need to <a href='/proxy/login.php'>Login</a>");
+		    		response.getWriter().write("Not authenticated, you need to <a href='/proxy/user/account/login/'>Login</a>");
 				}
 				((Request)request).setHandled(true);
 			}
@@ -715,6 +733,7 @@ public class TorrentLeechRssServer
 			cat = c;
 			creationTime = System.currentTimeMillis();
 			this.id = id;
+			downloadLink = "http://www.torrentleech.org/download/" + id;
 		}
 		
 		public String toString()
@@ -740,7 +759,8 @@ public class TorrentLeechRssServer
 			}
 			else
 			{
-				m_cookies.put(key, value);
+				if (!"JSESSIONID".equals(key))
+					m_cookies.put(key, value);
 			}
 		}
 
@@ -761,8 +781,8 @@ public class TorrentLeechRssServer
 	
 	public boolean isAuthenticated()
 	{
-		if (m_cookies.get("uid")== null) return false;
-		if (m_cookies.get("pass")== null) return false;
+//		return false;
+		if (m_cookies.get("member_id")== null) return false;
 		return true;
 	}
 	
@@ -819,7 +839,6 @@ public class TorrentLeechRssServer
 	@SuppressWarnings("unchecked")
 	void proxy(HttpServletRequest request, HttpServletResponse response, String target) throws IOException
 	{
- 		final boolean debug = false;
 		HttpURLConnection.setFollowRedirects(false);
 		String torrentleech = "www.torrentleech.org";
 		String host = torrentleech;
@@ -837,16 +856,17 @@ public class TorrentLeechRssServer
 			url = new URL("http://"+host+"/" + target);
 		}
 		
-		if (debug) logger.info("proxying to " + url);
+		logger.debug("proxying to " + url);
 		HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+		conn.setRequestProperty("Cookie", getCookiesString());
 		Enumeration headers = request.getHeaderNames();
 		while(headers.hasMoreElements())
 		{
 			String k = (String) headers.nextElement();
 			String v = request.getHeader(k);
-			if (k.equals("Accept-Encoding"))
+			if (k.equals("Accept-Encoding") || k.equals("Cookie"))
 			{
-				if (debug) logger.info("Skipping "  + k + " = " + v);
+				logger.debug("Skipping "  + k + " = " + v);
 				continue; // skip
 			}
 			
@@ -876,7 +896,7 @@ public class TorrentLeechRssServer
 				}
 			}
 			
-			if (debug) logger.info("request header: " + k + "=" + v);
+			logger.debug("request header: " + k + "=" + v);
 			conn.addRequestProperty(k, v);
 		}
 		
@@ -915,7 +935,7 @@ public class TorrentLeechRssServer
 				String v = conn.getHeaderField(i);
 				i++;
 				responsProps.put(k, v);
-				if (debug) logger.info("response header: " + k + "=" + v);
+				logger.debug("response header: " + k + "=" + v);
 			}
 			
 			BufferedInputStream bin = new BufferedInputStream(in, 4096);
@@ -954,10 +974,16 @@ public class TorrentLeechRssServer
 				String v = responsProps.get(k);
 				if (k.equalsIgnoreCase("Location")) // http redirect, proxify
 				{
-					if (v.startsWith("http://www.torrentleech.org/"))
+					String tlhttp = "http://www.torrentleech.org/";
+					if (v.startsWith(tlhttp))
 					{
-						String path = v.substring("http://www.torrentleech.org/".length());
+						String path = v.substring(tlhttp.length());
 						v = "http://"+ m_host + ":" + m_port + "/proxy/"+path;
+					}
+					else
+					if (v.equals("/"))
+					{
+						v = "http://"+ m_host + ":" + m_port + "/proxy/";
 					}
 					else
 						v = "http://"+ m_host + ":" + m_port + "/proxy/external:" + v;
@@ -997,10 +1023,11 @@ public class TorrentLeechRssServer
 	private String filterResponse(String target, HttpServletRequest request,
 			Map<String, String> responseProps, String responseText) throws UnsupportedEncodingException
 	{
-		if (target.equals("login.php") || target.startsWith("http://api.recaptcha.net") || target.startsWith("http://www.google.com/recaptcha/api"))
+		if (target.startsWith("") || target.startsWith("http://api.recaptcha.net") || target.startsWith("http://www.google.com/recaptcha/api"))
 		{
 			String responseText2= responseText.replaceAll("api.recaptcha.net", m_host + ":" + m_port + "/proxy/external:http://api.recaptcha.net");
 			responseText2= responseText2.replaceAll("www.google.com/recaptcha/api", m_host + ":" + m_port + "/proxy/external:http://www.google.com/recaptcha/api");
+			responseText2= responseText2.replaceAll("/user", "/proxy/user");
 			responseText = responseText2;
 		}
 		return responseText;
@@ -1072,5 +1099,10 @@ public class TorrentLeechRssServer
 	public String getCategory(int id)
 	{
 		return m_categories.get(id);
+	}
+	
+	public Iterator<CategoryGroup> catGroups()
+	{
+		return m_catGroups.iterator();
 	}
 }

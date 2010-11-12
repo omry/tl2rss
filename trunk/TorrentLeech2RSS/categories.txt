@@ -1,30 +1,39 @@
-1=Appz/PC ISO
-4=Games/PC ISO
-6=Music
-7=Episodes/TV
-10=Games/XBOX360
-11=Nintendo DS
-17=Games/PS2
-19=Movies/XviD
-20=Movies/DBD-R
-21=Games/PC Rips
-22=Appz/misc
-24=Games/XBOX
-26=Games/PSP
-27=Anime/Cartoon
-28=Books - Mags
-32=Appz/PDA
-33=Episodes/Boxsets
-35=Movies/HD-x264
-36=Games/Wii
-38=Movies/Music DVD
-39=Appz/MAC
-40=Documentaries
-41=Games/PC Retro
-42=Movies/Retro
-43=Movies/Foreign
-44=Games/X360 Retro
-45=Games/PS2 Retro
-46=NonScene/BRRip-XviD
-47=NonScene/BRRip-x264
-48=NonScene/Xvid
+[Movies]
+8=Cam
+9=TS/TC
+10=R5/Screeners
+11=DVDRip/DVDScreener
+12=DVD-R
+13=HD
+14=BDRip
+15=Boxsets
+29=Documentaries
+
+[Tv]
+26=Episodes
+27=BoxSets
+
+[Games]
+17=PC
+18=XBOX
+19=XBOX360
+20=PS2
+21=PS3
+23=PSP
+28=Wii
+30=Nintendo DS
+
+[Music]
+16=Music Videos
+31=Audio
+
+[Anime]
+7=Anime
+
+[Books]
+5=Books
+
+[Applications]
+23=PC-ISO
+24=Mac
+25=PDA

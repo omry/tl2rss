@@ -6,7 +6,7 @@ import org.htmlparser.filters.*;
 import org.htmlparser.beans.*;
 import org.htmlparser.util.*;
 
-public class test
+public class Filter
 {
     public static void main (String args[])
     {
@@ -43,6 +43,6 @@ public class test
             System.out.println (bean.getNodes ().toHtml ());
         }
         else
-            System.out.println ("Usage: java -classpath .;htmlparser.jar;htmllexer.jar test <url>");
+            System.out.println ("Usage: java -classpath .;htmlparser.jar;htmllexer.jar Filter <url>");
     }
 }
