@@ -1,3 +1,8 @@
+Version 3.0beta (12/10/2010)
+	Added support for the new TorrentLeech site layour and authentication method. This includes updated categories list.
+	Now outputs active categories on the main page
+	Now outputs the number of known torrents in the main page
+	
 Version 2.0.2 (20/05/2010)
 	Added a help page that describes RSS feed parameters
 	Added max_per_cat parameter to rss (http://localhost:8080/rss?max_per_cat=4) to limit the number of torrents that appear per category.
