@@ -22,10 +22,4 @@ http://localhost:8080/rss?cat=6,7
 will only output torrents from categories 6 and 7.
 Note that both 6 and 7 should be fetched for this to work, they will be fetched if they are selected or if 'All categories' is selected (?cat will filter torrents, not add new categories)
 
-See the categories.txt file for a full list of ids, but here are a few common ones:
-	All categories 	: 0
-	Games/PC ISO 	: 4
-	Episodes/TV 	: 7
-	Movies/XviD 	: 19
-	Movies/HD-x264 	: 35
-	
+See the categories.txt file for a full list of ids	
