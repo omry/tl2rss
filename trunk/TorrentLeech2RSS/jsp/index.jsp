@@ -21,4 +21,32 @@
 	<br/>
 	<a href="/rss">RSS feed</>&nbsp;&nbsp;&nbsp;&nbsp;<a href="help.jsp">(Feed parameters help)</a><br/>
 	<a href="/config.jsp">Configure TL2RSS</></a><br/>
+	
+	<table>
+		<th>
+			<td>
+				Name
+			</td>
+			<td>
+				Value
+			</td>
+		</th>
+		
+		<tr>
+			<td>
+				<b>Active categories</b>
+			</td>
+			<td>
+				<%= TorrentLeechRssServer.instance.getUpdatedCategories()%>
+			</td>
+		</tr>		
+		<tr>
+			<td>
+				<b>Torrents count</b>
+			</td>
+			<td>
+				<%= TorrentLeechRssServer.instance.numTorrents()%>
+			</td>
+		</tr>		
+	</table>
 </html>
