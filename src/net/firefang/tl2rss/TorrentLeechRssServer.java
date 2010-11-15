@@ -437,15 +437,6 @@ public class TorrentLeechRssServer
 	}
 
 
-	private Torrent getTorrent(String id, int cat)
-	{
-		if (!m_torrents.containsKey(id))
-		{
-			m_torrents.put(id, new Torrent(id, cat));
-		}
-		
-		return m_torrents.get(id);
-	}
 
 	private void updateCategory(int cat, boolean firstRun) throws ParserException, IOException 
 	{
@@ -491,12 +482,29 @@ public class TorrentLeechRssServer
 			if (!authenticated) 
 			{
 				logger.warn("No longer authenticated, aborting torrents update");
-				m_cookies.clear();
-				saveCookies();
+				clearCookies();
 				return;
 			}
 
-			processTorrentsStream(new ByteArrayInputStream(data));
+			int detectedTorretnts = processTorrentsStream(new ByteArrayInputStream(data));
+			if (detectedTorretnts == 0)
+			{
+				File file = new File("tmp/response_" + System.currentTimeMillis() + ".html");
+				logger.info("Detected 0 torrents in response, saving to " + file);
+				file.getParentFile().mkdirs();
+				FileOutputStream fout = new FileOutputStream(file);
+				try
+				{
+					fout.write(data);
+				}
+				finally
+				{
+					fout.close();
+				}
+				
+				logger.warn("No longer authenticated, aborting torrents update");
+				clearCookies();
+			}
 			
 			try
 			{
@@ -506,28 +514,22 @@ public class TorrentLeechRssServer
 			}			
 		}
 	}
+
+	private void clearCookies() {
+		m_cookies.clear();
+		saveCookies();
+	}
 	
 	//2010-05-16 05:28:55
 	static DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss"); 
 	static Pattern catLink = Pattern.compile("/torrents/browse/index/categories/([0-9]+)");
-	private void processTorrentsStream(InputStream in) throws UnsupportedEncodingException, ParserException
+	private int processTorrentsStream(InputStream in) throws UnsupportedEncodingException, ParserException
 	{
+		int detectTorrents = 0;
 		Parser parser = new Parser(new Lexer(new Page(in, "UTF-8")), Parser.DEVNULL);
 		NodeList res = parser.extractAllNodesThatMatch(getDownloadsFilter());
 		for (int i = 0; i < res.size(); i++)
 		{
-			
-			
-			/*
-			 * Extract:
- 			String id; 
-			String name;
-			long date;
-			String downloadLink;
-			long creationTime;
-			int cat;
-			*/
-			
 			Node node = res.elementAt(i);
 			NodeList children = node.getChildren();
 			String id = ((Tag)node).getAttribute("id");
@@ -548,7 +550,14 @@ public class TorrentLeechRssServer
 							if (matcher.matches())
 							{						
 								category = Integer.parseInt(matcher.group(1));
-								torrent = getTorrent(id, category);
+								
+								if (!m_torrents.containsKey(id))
+								{
+									m_torrents.put(id, new Torrent(id, category));
+								}
+								
+								detectTorrents++;
+								torrent = m_torrents.get(id);
 							}
 						}
 					}
@@ -590,7 +599,8 @@ public class TorrentLeechRssServer
 					}
 				}
 			}
-		}		
+		}
+		return detectTorrents;
 	}
 
 	
