@@ -568,7 +568,8 @@ public class TorrentLeechRssServer
 						if (title.childAt(0) instanceof LinkTag)
 						{
 							LinkTag href = (LinkTag) title.childAt(0);
-							torrent.name = ((TextNode) href.getChild(0)).getText(); 
+							torrent.name = ((TextNode) href.getChild(0)).getText();
+							torrent.downloadLink =  "http://www.torrentleech.org/download/" + torrent.id + "/" + java.net.URLEncoder.encode(torrent.name + ".torrent", "utf-8");
 						}
 						
 						NodeList ch = c.getChildren();
