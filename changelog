@@ -1,4 +1,7 @@
-Version 3.0beta (12/10/2010)
+Vesion 3.0.1beta (20/11/2010)
+	Fixed the download link to match the changed download link in the tl site.
+
+Version 3.0beta (12/11/2010)
 	Added support for the new TorrentLeech site layout and authentication method. This includes updated categories list.
 	Now outputs active categories on the main page
 	Now outputs the number of known torrents in the main page
