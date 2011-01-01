@@ -118,6 +118,11 @@ public class TorrentLeechRssServer
 		m_torrentTimeoutDays = Integer.parseInt(props.getProperty("torrent_timeout_days", "7"));
 		m_password = props.getProperty("password");
 		m_username = props.getProperty("username");
+		
+		// prevent usage of old cookie if we don't have a stored username and password.
+		if (m_password == null || m_username == null)
+			logout();
+		
 		logger.info("Running from " + m_host + ":" + m_port);
 		
 		m_updateInterval = Integer.parseInt(props.getProperty("update_interval", "25"));
