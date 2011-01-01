@@ -17,6 +17,8 @@ import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.InetAddress;
 import java.net.URL;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -100,9 +102,12 @@ public class TorrentLeechRssServer
 	
 	List<CategoryGroup> m_catGroups;
 	Map<Integer, String> m_categories;
+	private String m_password;
+	private String m_username;
 	
 	public TorrentLeechRssServer(Properties props) throws Exception
 	{
+		HttpURLConnection.setFollowRedirects(false);
 		instance = this;
 		loadCookies();
 		loadCategories();
@@ -111,6 +116,8 @@ public class TorrentLeechRssServer
 		m_host = props.getProperty("host", InetAddress.getLocalHost().getHostName());
 		m_port = Integer.parseInt(props.getProperty("port", "8080"));
 		m_torrentTimeoutDays = Integer.parseInt(props.getProperty("torrent_timeout_days", "7"));
+		m_password = props.getProperty("password");
+		m_username = props.getProperty("username");
 		logger.info("Running from " + m_host + ":" + m_port);
 		
 		m_updateInterval = Integer.parseInt(props.getProperty("update_interval", "25"));
@@ -292,6 +299,11 @@ public class TorrentLeechRssServer
 					{
 						try
 						{
+							if (!isAuthenticated())
+							{
+								authenticate();
+							}
+							
 							while(!isAuthenticated())
 							{
 								synchronized (TorrentLeechRssServer.this)
@@ -334,12 +346,49 @@ public class TorrentLeechRssServer
 		m_updateThread.start();
 	}
 	
+	protected void authenticate() 
+	{
+		if (m_username != null && m_password != null)
+		{
+			try 
+			{
+				logger.info("Attempting to login with saved credentials");
+				URL url = new URL("http://www.torrentleech.org/user/account/login/");
+				HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+				conn.setDoOutput(true);
+				conn.setRequestMethod("POST");
+				conn.setRequestProperty("Cookie", getCookiesString());
+				
+				OutputStream out = conn.getOutputStream();
+				String post = "username=" + URLEncoder.encode(m_username, "utf-8") + "&password=" + URLEncoder.encode(m_password, "utf-8") + "&login=submit";
+				out.write(post.getBytes());
+				
+				int res = conn.getResponseCode();
+				if (res == 200 || res == 302)
+				{
+					List<String> cookies = (List<String>) conn.getHeaderFields().get("Set-Cookie");
+					handleCookies(cookies);				
+				}
+				
+				if (!isAuthenticated())
+				{
+					m_username = null;
+					m_password = null;
+				}
+			} 
+			catch (IOException e) 
+			{
+				logger.warn("Error loging in", e);
+			} 
+		}
+	}
+
 	long m_lastUpdate;
 	private Thread m_updateThread;
 	protected void updateTorrents() throws IOException
 	{
-		logger.info("Updating torrents");
 		if (System.currentTimeMillis() - m_lastUpdate < (m_updateInterval-1) * 60 * 1000) return;
+		logger.info("Updating torrents");
 
 		StringTokenizer tok = new StringTokenizer(m_updateCategories, ", ");
 		while(tok.hasMoreElements())
@@ -481,29 +530,15 @@ public class TorrentLeechRssServer
 	        boolean authenticated = handleCookies(cookies);
 			if (!authenticated) 
 			{
-				logger.warn("No longer authenticated, aborting torrents update");
-				clearCookies();
-				return;
+				if (!handleDisconnection())
+					return;
 			}
 
 			int detectedTorretnts = processTorrentsStream(new ByteArrayInputStream(data));
 			if (detectedTorretnts == 0)
 			{
-				File file = new File("tmp/response_" + System.currentTimeMillis() + ".html");
-				logger.info("Detected 0 torrents in response, saving to " + file);
-				file.getParentFile().mkdirs();
-				FileOutputStream fout = new FileOutputStream(file);
-				try
-				{
-					fout.write(data);
-				}
-				finally
-				{
-					fout.close();
-				}
-				
-				logger.warn("No longer authenticated, aborting torrents update");
-				clearCookies();
+				if (!handleDisconnection())
+					return;
 			}
 			
 			try
@@ -513,6 +548,26 @@ public class TorrentLeechRssServer
 			{
 			}			
 		}
+	}
+
+	private boolean handleDisconnection() throws IOException 
+	{
+		authenticate();
+		boolean b = isAuthenticated();
+		if (!b)
+		{
+			logger.warn("No longer authenticated, clearing credentials and cookies");
+			logout();
+		}
+		return b;
+	}
+
+	private void logout() throws IOException 
+	{
+		m_username = null;
+		m_password = null;
+		saveCreds();
+		clearCookies();
 	}
 
 	private void clearCookies() {
@@ -721,8 +776,7 @@ public class TorrentLeechRssServer
 			else
 			if (target.equals("/logout"))
 			{
-				m_cookies.clear();
-				saveCookies();
+				logout();
 				response.sendRedirect("index.jsp");
 				((Request)request).setHandled(true);
 			}
@@ -854,8 +908,8 @@ public class TorrentLeechRssServer
 	@SuppressWarnings("unchecked")
 	void proxy(HttpServletRequest request, HttpServletResponse response, String target) throws IOException
 	{
-		HttpURLConnection.setFollowRedirects(false);
 		String torrentleech = "www.torrentleech.org";
+		
 		String host = torrentleech;
 		String referrer = null;
 		URL url;
@@ -915,6 +969,7 @@ public class TorrentLeechRssServer
 			conn.addRequestProperty(k, v);
 		}
 		
+		boolean grabPassword = false;
 		if (request.getMethod() == "POST")
 		{
 			conn.setDoOutput(true);
@@ -929,7 +984,14 @@ public class TorrentLeechRssServer
 	        	out.write(buff, 0, len);
 	        	sb.append(new String(buff, 0, len));
 	        }
-//	        if (debug) logger.info("Sent " + sb);
+	        
+			if (target.equals("user/account/login/"))
+			{
+				Properties postData = getPostData(sb);
+				m_username = postData.getProperty("username");
+				m_password = postData.getProperty("password");
+				grabPassword = true;
+			}
 		}
 		
 		int code = conn.getResponseCode();
@@ -1012,8 +1074,43 @@ public class TorrentLeechRssServer
 		}
 		else
 		{
+			if (grabPassword)
+			{
+				saveCreds();
+			}
 			logger.info("Authenticated");
 			response.sendRedirect("/");
+		}
+	}
+
+	private Properties getPostData(StringBuffer sb) throws UnsupportedEncodingException 
+	{
+		Properties u = new Properties();
+		StringTokenizer t = new StringTokenizer(sb.toString(), "&");
+		while(t.hasMoreElements())
+		{
+			String e = t.nextToken();
+			StringTokenizer s = new StringTokenizer(e, "=");
+			String k = URLDecoder.decode(s.nextToken(), "utf-8");
+			String v = null;
+			if (s.hasMoreElements())
+			{
+				v = URLDecoder.decode(s.nextToken(), "utf-8");
+			}
+			u.setProperty(k, v);
+		}
+		return u;
+		
+	}
+
+	private void saveCreds() throws IOException 
+	{
+		Properties props = new Properties();
+		if (m_username != null && m_password != null)
+		{
+			props.setProperty("username", m_username);
+			props.setProperty("password", m_password);
+			saveOptions(props);
 		}
 	}
 
@@ -1092,9 +1189,15 @@ public class TorrentLeechRssServer
 	
 	public void saveOptions() throws IOException
 	{
+		saveOptions(new Properties());
+	}
+	
+	public void saveOptions(Properties extra) throws IOException
+	{
 		Properties props = new Properties();
 		File file = new File("conf.properties");
 		props.load(new FileInputStream(file));
+		props.putAll(extra);
 		props.put("update_categories", m_updateCategories);
 		FileOutputStream f = new FileOutputStream(file);
 		try
