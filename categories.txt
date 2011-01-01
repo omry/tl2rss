@@ -12,6 +12,7 @@
 [Tv]
 26=Episodes
 27=BoxSets
+32=Episodes HD
 
 [Games]
 17=PC
