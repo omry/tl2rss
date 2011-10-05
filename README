@@ -8,16 +8,16 @@ You need Java to run TorrentLeech2RSS, tested with Java 1.5 and 1.6
 Extract the zip somewhere and run TL2RSS 
 
 == Running ==
-tl2rss need in the backgrond.
+tl2rss need to run in the background.
 to run it, use the command:
 	java -jar tl2rss.jar
 Or double click on the jar file. (See the processes list to be sure it's running if you start it this way).
 
-Access TL2RSS using browser (by default http://localhost:8080) to login into torrentleech.
-Then use RSS url in your RSS reader (http://localhost:8080/rss)
+Access TL2RSS using browser (by default http://localhost:8080) to login into TorrentLeech.
+Then use RSS URL in your RSS reader (http://localhost:8080/rss)
 
 You can change scanned categories via the configuration screen.
-When accessing the rss feed, you can filter it by catefory like:
+When accessing the rss feed, you can filter it by category like:
 http://localhost:8080/rss?cat=6,7
 will only output torrents from categories 6 and 7.
 Note that both 6 and 7 should be fetched for this to work, they will be fetched if they are selected or if 'All categories' is selected (?cat will filter torrents, not add new categories)
