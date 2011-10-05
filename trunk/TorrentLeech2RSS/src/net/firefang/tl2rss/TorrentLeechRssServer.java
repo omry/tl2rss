@@ -960,7 +960,7 @@ public class TorrentLeechRssServer
 			String v = request.getHeader(k);
 			if (k.equals("Cookie") || k.equals("Accept-Encoding"))
 			{
-				logger.debug("Skipping "  + k + " = " + v);
+				logger.trace("Skipping "  + k + " = " + v);
 				continue; // skip
 			}
 			
