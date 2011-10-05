@@ -1,5 +1,6 @@
 Version 3.0.3 (05/10/2011)
-	Fixed a bug exposed by recent TL changes, which caused torrents to contain invalid data. 
+	Fixed a bug exposed by recent TL changes, which caused torrents to contain invalid data
+	General code cleanup
 
 
 Version 3.0.2 (01/01/2011)
