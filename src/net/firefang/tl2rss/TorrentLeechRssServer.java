@@ -559,7 +559,7 @@ public class TorrentLeechRssServer
 
 	private List<String> getConnCookies(HttpURLConnection conn) 
 	{
-		List<String> res = new ArrayList<>();
+		List<String> res = new ArrayList<String>();
 		int n=0;
 		while(conn.getHeaderField(n) != null)
 		{
