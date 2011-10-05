@@ -996,7 +996,7 @@ public class TorrentLeechRssServer
 				}
 			}
 			
-			logger.debug("request header: " + k + "=" + v);
+			logger.trace("request header: " + k + "=" + v);
 			conn.addRequestProperty(k, v);
 		}
 		
