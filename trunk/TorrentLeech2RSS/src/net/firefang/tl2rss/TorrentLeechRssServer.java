@@ -439,9 +439,10 @@ public class TorrentLeechRssServer
 		{
 			public int compare(Object t1, Object t2)
 			{
-				Torrent a = (Torrent) t1;
-				Torrent b = (Torrent) t2;
-				return (int) (b.date - a.date);
+                                Torrent a = (Torrent) t1;
+                                Torrent b = (Torrent) t2;
+                                long d = b.date - a.date;
+                                return d > 0 ? 1 : d < 0 ? -1 : 0;
 			}
 		});
 		
@@ -672,8 +673,12 @@ public class TorrentLeechRssServer
 						if (title.childAt(0) instanceof LinkTag)
 						{
 							LinkTag href = (LinkTag) title.childAt(0);
-							torrent.name = ((TextNode) href.getChild(0)).getText();
-							torrent.downloadLink =  "http://www.torrentleech.org/download/" + torrent.id + "/" + java.net.URLEncoder.encode(torrent.name + ".torrent", "utf-8");
+							TextNode tt = (TextNode) href.getChild(0);
+							if (tt != null)
+							{
+								torrent.name = tt.getText();
+								torrent.downloadLink =  "http://www.torrentleech.org/download/" + torrent.id + "/" + java.net.URLEncoder.encode(torrent.name + ".torrent", "utf-8");
+							}
 						}
 						
 						NodeList ch = c.getChildren();
